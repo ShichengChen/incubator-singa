@@ -33,9 +33,7 @@ Device::Device(int id, int num_executors)
 void Device::Exec(function<void(Context*)>&& fn, const vector<Block*> read_blocks,
                     const vector<Block*> write_blocks, bool use_rand_generator) {
   // TODO(wangwei) execute operations scheduled by the scheduler.
-
-    //std::cout << "-----------" <<std::endl;
-    long long texec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+   long long texec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     DoExec(std::move(fn), 0);
     long long texec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::ofstream outfile;
@@ -67,12 +65,12 @@ Block* Device::NewBlock(int size) {
   if (size > 0) {
     void* ptr = Malloc(size);
     auto newblock = new Block(ptr, size);
-      std::ofstream outfile;
-      outfile.open("/nv/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
+    std::ofstream outfile;
+    outfile.open("/nv/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
     long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     //cout << "malloc," << newblock << "," << size << ","<<now<<endl;
-      outfile << "malloc," << newblock << "," <<size << "," << now << "\n";
-      outfile.close();
+    outfile << "malloc," << newblock << "," <<size << "," << now << "\n";
+    outfile.close();
     return newblock;
   } else {
     return nullptr;
@@ -82,7 +80,8 @@ Block* Device::NewBlock(int size) {
 // TODO(wangwei) return Block to the memory manager
 void Device::FreeBlock(Block* block) {
   if (block != nullptr) {
-  long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      Free(block->mutable_data());
+      long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
       std::ofstream outfile;
       outfile.open("/nv/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
       //cout << "free," << block << "," << block->size() << ","<<now<<endl;

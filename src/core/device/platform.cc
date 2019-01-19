@@ -132,7 +132,8 @@ Platform::CreateCudaGPUsOn(const vector<int> &devices, size_t init_size) {
 
   vector<shared_ptr<Device> > ret;
   for (auto device : devices) {
-    auto dev = std::make_shared<CudaGPU>(device, pool);
+    //auto dev = std::make_shared<CudaGPU>(device, pool);
+    auto dev = std::make_shared<SwapGPU>(device, pool);
     ret.push_back(dev);
   }
   return ret;
