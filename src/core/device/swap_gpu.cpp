@@ -12,6 +12,7 @@
 #include <iostream>
 #include "singa/core/device.h"
 #include "singa/utils/cuda_utils.h"
+using namespace std;
 namespace singa {
 
 const cudaMemcpyKind copyKind[] = {cudaMemcpyHostToHost, cudaMemcpyHostToDevice,
@@ -20,6 +21,7 @@ const cudaMemcpyKind copyKind[] = {cudaMemcpyHostToHost, cudaMemcpyHostToDevice,
 
 
 void SwapGPU::Append(InfoBlock b){
+    cout << global_index << ":global index" << endl;
     if (iteration_length < iteration_length_threshold){
     if (b.op == 1){
       if (global_load.size()>0){
