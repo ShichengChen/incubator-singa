@@ -51,11 +51,14 @@ namespace singa {
 
     struct InfoBlock{
         Block* ptr;
-        int s;
-        int op;
+        int size;
+        int operation_type;
         int idx;
-        long long t;
-        InfoBlock(Block* p, int s, int op, int i,long long t):ptr(p),s(s),op(op),idx(i),t(t){}
+        double t;
+        InfoBlock(Block* p, int s, int op, int i,double t):ptr(p),size(s),operation_type(op),idx(i),t(t){}
+        bool operator == (const InfoBlock& rhs) const {
+            return size == rhs.size && operation_type == rhs.operation_type;
+        }
     };
 /// Allocate memory and execute Tensor operations.
 /// There are three types of devices distinguished by their programming
@@ -72,7 +75,7 @@ namespace singa {
 
         /// Called by Tensor.
         Block* NewBlock(int size);
-
+        void AppendInfo(InfoBlock b);
         /// Called by Tensor.
         void FreeBlock(Block* block);
 
@@ -245,7 +248,7 @@ struct SwapBlock{
     /*
     meta of candidate blocks
     */
-    string ptr;
+    Block* ptr;
     string cat; //sub category of the candidate blocks, read-read, write-read, etc.
     int name;
     size_t size;
@@ -271,7 +274,7 @@ struct SwapBlock{
     double t_out_end = 0;
     double t_in_end  = 0;
     double t_in_start = 0;
-    SwapBlock(string p, size_t s, int idx_out_start, int idx_in_end, double t_out_start, double t_in_end):
+    SwapBlock(Block* p, size_t s, int idx_out_start, int idx_in_end, double t_out_start, double t_in_end):
     ptr(p), size(s), r_idx(idx_out_start),d_idx(idx_in_end),r_time(t_out_start), d_time(t_in_end) {}
 };
 /// Device able to Swap memory between Nvidia GPU and CPU
@@ -308,7 +311,7 @@ class SwapGPU : public Device {
   void DetectionPlan();
 
   //test iteration, return GC
-  int Detection(vector<string>vec_block,int &iteration_length, int &location_of_2nd_iteration);
+  int Detection(vector<InfoBlock>vecBlock,int &iteration_length, int &location_of_2nd_iteration);
 
   //entire plan, from SelectBlock() to Scheduling(), BuildMetaTables()
   void Plan();
@@ -360,7 +363,7 @@ class SwapGPU : public Device {
   vector<string>vec_block_mf; //iterations used to construct pool
   vector<double>global_load; // load from begining
   vector<double>origin_load; //3 iteration load, for planning.
-  vector<DeviceOptInfo>vec_run;
+  vector<InfoBlock>vec_run;
   vector<int>operation_sequence; //sequence of operations of one middle iteration
   vector<size_t>size_sequence; //size of all operations of one middle iteration
 
@@ -384,7 +387,8 @@ class SwapGPU : public Device {
   double total_swap_out_time = 0;
   double temp_time = 0;
   double temp_time_baseline; //vec_run[0] time
-  int iteration_length_threshold = 1000;
+  /////todo attention:add for debug
+  int iteration_length_threshold = 100000;
 
  private:
   shared_ptr<DeviceMemPool> pool_;

@@ -149,7 +149,7 @@ class FeedForwardNet(object):
         else:
             self.out_sample_shape_of_layer[lyr.name] = [out_shape]
         self.layers.append(lyr)
-        print((lyr.name, out_shape))
+        #print((lyr.name, out_shape))
         return lyr
 
     def param_values(self):
@@ -351,10 +351,11 @@ class FeedForwardNet(object):
                 disp_src = '+'.join([src.name for src in srcs])
                 disp_src += '-->' + cur.name
                 if type(out) is list:
-                    print('%s: %s' % (disp_src,
-                                      ' '.join([str(o.l1()) for o in out])))
+                    pass
+                    #print('%s: %s' % (disp_src,' '.join([str(o.l1()) for o in out])))
                 else:
-                    print('%s: %f' % (disp_src, out.l1()))
+                    pass
+                    #print('%s: %f' % (disp_src, out.l1()))
             output_of_layer[cur.name] = out
             if cur.name in output:
                 ret[cur.name] = out
@@ -430,10 +431,11 @@ class FeedForwardNet(object):
                     [dst.name for dst in self.dst_of_layer[cur.name]])
                 disp_src += '-->' + cur.name
                 if type(outs) is list:
-                    print('%s: %s' % (disp_src,
-                                      ' '.join([str(o.l1()) for o in outs])))
+                    #print('%s: %s' % (disp_src,' '.join([str(o.l1()) for o in outs])))
+                    pass
                 else:
-                    print('%s: %f' % (disp_src, outs.l1()))
+                    pass
+                    #print('%s: %f' % (disp_src, outs.l1()))
             if type(outs) is list:
                 output_of_layer[cur.name] = outs[::-1]
             else:
@@ -472,7 +474,7 @@ class FeedForwardNet(object):
                 f = f[0:-4]
             sp = snapshot.Snapshot(f, True, buffer_size)
             v = tensor.from_numpy(np.array([__version__]))
-            params['SINGA_VERSION'] = v
+            #params['SINGA_VERSION'] = v
             for (name, val) in zip(self.param_names(), self.param_values()):
                 val.to_host()
                 sp.write(name, val)

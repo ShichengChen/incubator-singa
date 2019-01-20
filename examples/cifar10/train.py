@@ -40,7 +40,8 @@ from caffe import caffe_net
 import cnn
 import vgg
 import resnet
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def load_dataset(filepath):
     print('Loading data file %s' % filepath)

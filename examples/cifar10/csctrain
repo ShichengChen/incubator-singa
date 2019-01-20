@@ -1,0 +1,1 @@
+python train.py vgg cifar-10-batches-py
