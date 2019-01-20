@@ -472,9 +472,9 @@ class Tensor(object):
             x (float or Tensor):
         '''
         if isinstance(x, Tensor):
-            self.data /= x.data
+            self.data *= (1.0/x.data)
         else:
-            self.data /= float(x)
+            self.data *= (1.0/float(x))
         return self
 
     '''
