@@ -20,6 +20,7 @@
 #define SINGA_CORE_COMMON_H_
 #include <random>
 #include <chrono>
+#include <iostream>
 #include "singa/singa_config.h"
 #include <atomic>
 #include <memory>
@@ -38,7 +39,7 @@
 #ifdef USE_OPENCL
 #include "singa/utils/opencl_utils.h"
 #endif  // USE_OPENCL
-
+using namespace std;
 using std::atomic;
 
 namespace singa {
@@ -68,9 +69,11 @@ class Block {
   }
   const void* data() const {
     CHECK(initialized_) << "Must initialize data before reading it";
+      if(data_ == nullptr)cout << "data() should not be nullptr" << endl;
     return static_cast<char*>(data_) + offset_;
   }
   void* get_data(){
+      if(data_ == nullptr)cout << "get_data() should not be nullptr" << endl;
       //get data without calling data(), to avoid append block info.
       return static_cast<char*>(data_);
   }

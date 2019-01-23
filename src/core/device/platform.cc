@@ -129,7 +129,7 @@ Platform::CreateCudaGPUsOn(const vector<int> &devices, size_t init_size) {
     CHECK_LE(bytes, Platform::GetGPUMemSize(device).first);
   }
   auto pool = std::make_shared<CnMemPool>(conf);
-
+  //auto pool = std::make_shared<CudaMemPool>();
   vector<shared_ptr<Device> > ret;
   for (auto device : devices) {
     //auto dev = std::make_shared<CudaGPU>(device, pool);
