@@ -197,15 +197,14 @@ vector<SwapBlock> SwapGPU::SelectBlock(vector<SwapBlock>vec_swap,vector<double> 
     auto temp_over_limit_ = GetOptIdxAboveLoadLimit(temp_load,mem_limit,0,iteration_length,iteration_length);
     auto max_current = GetLoadPeak(temp_load,iteration_length);
     auto newmax_load = max_current.first;
-    //break;
-    ///todo: csc find the real reason.
     ///even one swap in swap out, there is a problem
     if (newmax_load < mem_limit){
       break;
     }
   }
   //swap all of the elements
-  return vec_swap_selct;
+  //todo:csc try to swap all of the blocks
+  return vec_swap;
   //return vec_swap_selct;
 }
 
@@ -472,8 +471,8 @@ void SwapGPU::Plan(){
   // vec_swap_selct_global = vec_swap_majority_voting;
 
   auto vec_load_WDOA = origin_load;
-  //string mode = "stick-to-limit";
-  string mode = "no-overhead";
+  string mode = "stick-to-limit";
+  //string mode = "no-overhead";
 
   double overhead_WDOA = 0;
   Scheduling(vec_swap_majority_voting, vec_load_WDOA,overhead_WDOA,mem_limit_majority_voting,mode);
