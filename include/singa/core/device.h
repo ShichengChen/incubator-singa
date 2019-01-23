@@ -388,7 +388,7 @@ class SwapGPU : public Device {
   double temp_time = 0;
   double temp_time_baseline; //vec_run[0] time
   /////todo attention:add for debug
-  int iteration_length_threshold = 100000;
+  int iteration_length_threshold = 1000;
 
  private:
   shared_ptr<DeviceMemPool> pool_;

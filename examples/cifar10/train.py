@@ -125,6 +125,7 @@ def caffe_lr(epoch):
 def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
           use_cpu=False):
     print('Start intialization............')
+    use_cpu=False
     if use_cpu:
         print('Using CPU')
         dev = device.get_default_device()
@@ -148,15 +149,20 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         loss, acc = 0.0, 0.0
         print('Epoch %d' % epoch)
         for b in range(10):
+            print ('iteration:',b)
             x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
             y = train_y[idx[b * batch_size: (b + 1) * batch_size]]
             tx.copy_from_numpy(x)
             ty.copy_from_numpy(y)
+            #print('before train')
             grads, (l, a) = net.train(tx, ty)
+            #print('after train')
             loss += l
             acc += a
+            #print ('brefore grad')
             for (s, p, g) in zip(net.param_names(), net.param_values(), grads):
                 opt.apply_with_lr(epoch, get_lr(epoch), g, p, str(s), b)
+            #print ('after grad')
             # update progress bar
             utils.update_progress(b * 1.0 / num_train_batch,
                                   'training loss = %f, accuracy = %f' % (l, a))
@@ -176,7 +182,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
 
         print('test loss = %f, test accuracy = %f' %
               ((loss / num_test_batch), (acc / num_test_batch)))
-    net.save('model', 20)  # save model params into checkpoint file
+    #net.save('model', 20)  # save model params into checkpoint file
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train dcnn for cifar10')

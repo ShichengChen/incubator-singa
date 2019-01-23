@@ -23,6 +23,8 @@
 #include <fstream>
 #include <string>
 using namespace std;
+
+/*
 namespace singa {
 
     void* Block::mutable_data() {
@@ -32,11 +34,12 @@ namespace singa {
         if (ptr_device_!=nullptr){
             auto now = (std::chrono::system_clock::now()).time_since_epoch().count();
             cout << " common mutable " << endl;
-            ptr_device_->AppendInfo(InfoBlock(this,this->size(),4,-1,now));
+            //ptr_device_->AppendInfo(InfoBlock(this,this->size(),4,-1,now));
         }
 
         //update ptr after swap in done, if variable is not swapped back yet as expected.
         if (data_ == nullptr) {
+            cout << 'wrong mutable_data, shoud not be here' << endl;
             //todo:csc
             //auto tempData_ = ptr_device_->UpdateGpuPtrInfo(this);
             //return static_cast<char*>(tempData_) + offset_;
@@ -53,11 +56,12 @@ namespace singa {
         if (ptr_device_!=nullptr){
             auto now = (std::chrono::system_clock::now()).time_since_epoch().count();
             cout << " common mutable " << endl;
-            ptr_device_->AppendInfo(InfoBlock(this,this->size(),2,-1,now));
+            //ptr_device_->AppendInfo(InfoBlock(this,this->size(),2,-1,now));
         }
 
         //update ptr after swap in done, if variable is not swapped back yet as expected.
         if (data_ == nullptr) {
+            cout << 'wrong data, shoud not be here' << endl;
             //todo:csc
             //auto tempData_ = ptr_device_->UpdateGpuPtrInfo(this);
             //return static_cast<char*>(tempData_) + offset_;
@@ -66,16 +70,6 @@ namespace singa {
         return static_cast<char*>(data_) + offset_;
     }
 
-    void* Block::get_data() {
-        //get data without calling data(), to avoid append block info.
-        return data_;
-    }
-
-    void Block::update_data(void* data_new) {
-        //update data_, after the swap in completes.
-        data_ = data_new;
-    }
-
-
 }  // namespace singa
+*/
 #endif

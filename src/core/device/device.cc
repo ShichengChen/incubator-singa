@@ -34,32 +34,33 @@ namespace singa {
     void Device::Exec(function<void(Context*)>&& fn, const vector<Block*> read_blocks,
                       const vector<Block*> write_blocks, bool use_rand_generator) {
         // TODO(wangwei) execute operations scheduled by the scheduler.
+        DoExec(std::move(fn), 0);
 
         //std::cout << "-----------" <<std::endl;
         long long texec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        DoExec(std::move(fn), 0);
+
         long long texec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        std::ofstream outfile;
+        //std::ofstream outfile;
         //outfile.open("/home/csc/incubator-singa/examples/cifar10", std::ios_base::app);
-        outfile.open("/mount/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
+        //outfile.open("/mount/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
         for(auto it = read_blocks.begin(); it != read_blocks.end(); it++){
+            if((*it) == 0)break;
             long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             //std::cout << "read," << *it << "," <<(*it)->size() << "," << now<<"," << texec1-texec0<<std::endl;
             //outfile << "read," << *it << "," <<(*it)->size() << "," << now<<"," << texec1-texec0<< "\n";
-            outfile << "read," << *it << "," <<(*it)->size() << "," << now<<"\n";
+            //outfile << "read," << *it << "," <<(*it)->size() << "," << now<<"\n";
             Append(InfoBlock(*it,(*it)->size(),2,-1,now));
         }
         for(auto it = write_blocks.begin(); it != write_blocks.end(); it++){
-            long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             if((*it) == 0)break;
+            long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             //std::cout << "mutable," << *it << "," <<(*it)->size() << "," << now<<"," << texec1-texec0 <<std::endl;
             //outfile << "mutable," << *it << "," <<(*it)->size() << "," << now<<"," << texec1-texec0 << "\n";
-            outfile << "mutable," << *it << "," <<(*it)->size() << "," << now<< "\n";
+            //outfile << "mutable," << *it << "," <<(*it)->size() << "," << now<< "\n";
             Append(InfoBlock(*it,(*it)->size(),4,-1,now));
         }
 
-        outfile.close();
-
+        //outfile.close();
 
 
     }
@@ -71,12 +72,12 @@ namespace singa {
         if (size > 0) {
             void* ptr = Malloc(size);
             auto newblock = new Block(ptr, size);
-            std::ofstream outfile;
-            outfile.open("/mount/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
+            //std::ofstream outfile;
+            //outfile.open("/mount/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
             long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             //cout << "malloc," << newblock << "," << size << ","<<now<<endl;
-            outfile << "malloc," << newblock << "," <<size << "," << now << "\n";
-            outfile.close();
+            //outfile << "malloc," << newblock << "," <<size << "," << now << "\n";
+            //outfile.close();
             Append(InfoBlock(newblock,size,1,-1,now));
             return newblock;
         } else {
@@ -90,11 +91,11 @@ namespace singa {
     void Device::FreeBlock(Block* block) {
         if (block != nullptr) {
             long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-            std::ofstream outfile;
-            outfile.open("/mount/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
+            //std::ofstream outfile;
+            //outfile.open("/mount/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);
             //cout << "free," << block << "," << block->size() << ","<<now<<endl;
-            outfile << "free," << block << "," << block->size() << "," << now << "\n";
-            outfile.close();
+            //outfile << "free," << block << "," << block->size() << "," << now << "\n";
+            //outfile.close();
             Append(InfoBlock(block,block->size(),-1,-1,now));
             Free(block->mutable_data());
             delete block;

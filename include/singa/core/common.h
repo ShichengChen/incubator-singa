@@ -70,9 +70,15 @@ class Block {
     CHECK(initialized_) << "Must initialize data before reading it";
     return static_cast<char*>(data_) + offset_;
   }
-  void* get_data() ;
+  void* get_data(){
+      //get data without calling data(), to avoid append block info.
+      return static_cast<char*>(data_);
+  }
 
-  void update_data(void* data_new) ;
+  void update_data(void* data_new) {
+      //update data_, after the swap in completes.
+      data_ = data_new;
+  }
   size_t size() const { return size_; }
   size_t offset() const { return offset_; }
   int IncRefCount() {
