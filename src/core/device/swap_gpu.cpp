@@ -18,6 +18,7 @@
 #include <tuple>        // std::tuple, std::get, std::tie, std::ignore
 #include "singa/core/device.h"
 #include "singa/utils/cuda_utils.h"
+#include <sstream>
 using namespace std;
 
 namespace singa {
@@ -158,7 +159,7 @@ int SwapGPU::Detection(vector<InfoBlock>vecBlock,int &iteration_length, int &loc
   int idx_range = (int)(vecBlock.size());
   ///rep test
   //vector<size_t> vec_rep = DeviceOptSeqRepeatableTestPreProcess(vec_opt_info);
-  //csc not use size_delta
+  //csc did not use size_delta
   RepeatableTest(vecBlock,iteration_length,location_of_2nd_iteration,iteration_length_threshold,global_index);
 
   //Note here location_of_2nd_iteration not exactly start of one iteration,
@@ -188,7 +189,8 @@ struct sort_by_DOA_origin_descending{
 
 vector<SwapBlock> SwapGPU::SelectBlock(vector<SwapBlock>vec_swap,vector<double> temp_load,double mem_limit,string mode){
 
-    vector<SwapBlock>vec_swap_selct;
+  vector<SwapBlock>vec_swap_selct;
+  int cnt=0;
   sort(vec_swap.begin(),vec_swap.end(),sort_by_DOA_origin_descending());
   //select block one by one till updated peak load is no larger than limit.
   for (int i=0; i<vec_swap.size(); i++){
@@ -198,14 +200,13 @@ vector<SwapBlock> SwapGPU::SelectBlock(vector<SwapBlock>vec_swap,vector<double> 
     auto max_current = GetLoadPeak(temp_load,iteration_length);
     auto newmax_load = max_current.first;
     ///even one swap in swap out, there is a problem
-    if (newmax_load < mem_limit){
-      break;
-    }
+    if(++cnt>number_of_swap_blocks)break;
+    if (number_of_swap_blocks == 0 && newmax_load < mem_limit)break;
   }
   //swap all of the elements
   //todo:csc try to swap all of the blocks
-  return vec_swap;
-  //return vec_swap_selct;
+  //return vec_swap;
+  return vec_swap_selct;
 }
 
 void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_load_temp,double &overhead,double mem_limit,string mode){
@@ -255,6 +256,7 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     for (int i =0; i<vec_swap_selct.size(); i++){
       auto itm = vec_swap_selct[i];
       int need_idx = itm.d_idx-6;
+      //swap in advance, here is six idx
       if (i > 0){ need_idx = std::min(need_idx,vec_swap_selct[i-1].idx_in_start); }
       itm.idx_in_end = need_idx;
       double prepareTime = vec_run[need_idx+iteration_length].t - SwapInTime(itm.size);
@@ -286,18 +288,18 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
     for (int i = 0; i<vec_swap_selct.size(); i++){
       auto itm = vec_swap_selct[i];
-      int ready_idx = 0;
-      if (itm.cat == "A1") { ready_idx = itm.r_idx; }
-      if (itm.cat == "A2") { ready_idx = itm.r_idx + data_buffer; }
-      if (itm.cat == "A3") { ready_idx = itm.r_idx + mutable_data_buffer; }
+      int ready_idx = itm.r_idx_ready;
+      //if (itm.cat == "A1") { ready_idx = itm.r_idx; }
+      //if (itm.cat == "A2") { ready_idx = itm.r_idx + data_buffer; }
+      //if (itm.cat == "A3") { ready_idx = itm.r_idx + mutable_data_buffer; }
 
       if (i > 0){
         ready_idx = std::max(ready_idx,vec_swap_selct[i-1].idx_out_end);
       }
       itm.idx_out_start = ready_idx;
-      itm.t_out_start = vec_run[ready_idx].t;
+      itm.t_out_start = vec_run[ready_idx+iteration_length].t;
       itm.t_out_end = itm.t_out_start + SwapOutTime(itm.size);
-      while (itm.t_out_end > vec_run[ready_idx].t){
+      while (itm.t_out_end > vec_run[ready_idx+iteration_length].t){
         ready_idx++;
       }
       itm.idx_out_end = ready_idx;
@@ -311,8 +313,8 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
       //todo:csc tried syn swapin with earier deadline
       if (i > 0){ need_idx = std::min(need_idx,vec_swap_selct[i-1].idx_in_start); }
       itm.idx_in_end = need_idx;
-      double prepareTime = vec_run[need_idx].t - SwapInTime(itm.size);
-      while (prepareTime < vec_run[need_idx].t){
+      double prepareTime = vec_run[need_idx+iteration_length].t - SwapInTime(itm.size);
+      while (prepareTime < vec_run[need_idx+iteration_length].t){
         need_idx--;
       }
       itm.idx_in_start = need_idx;
@@ -372,7 +374,10 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     meta.cpu_ptr = temp_ptr;
     meta.out_stream = stream1;
     meta.in_stream = stream2;
+    meta.block_=vec_run[itm.r_idx+iteration_length].ptr;
+    //todo:csc add block ptr here
     table_meta[itm.r_idx] = meta;
+
   }
 
 }
@@ -439,9 +444,9 @@ void SwapGPU::Plan(){
         itm.AOA = itm.DOA * 1/itm.size;
       }
       //cat A
-      if (vec_run_dup[i-1].operation_type == 3){ itm.cat = "A1"; itm.r_idx_ready = itm.r_idx; }
-      if (vec_run_dup[i-1].operation_type == 2){ itm.cat = "A2"; itm.r_idx_ready = itm.r_idx + data_buffer;}
-      if (vec_run_dup[i-1].operation_type == 4){ itm.cat = "A3"; itm.r_idx_ready = itm.r_idx + mutable_data_buffer;}
+      if (vec_run_dup[i-1].operation_type == 3){ itm.cat = "A1"; itm.r_idx_ready = itm.r_idx + 6;}
+      if (vec_run_dup[i-1].operation_type == 2){ itm.cat = "A2"; itm.r_idx_ready = itm.r_idx + 6;}//data_buffer;}
+      if (vec_run_dup[i-1].operation_type == 4){ itm.cat = "A3"; itm.r_idx_ready = itm.r_idx + 6;}//mutable_data_buffer;}
 
       vec_swap.push_back(itm);
     }
@@ -465,14 +470,34 @@ void SwapGPU::Plan(){
 
   /// majority voting, can specify mode here, can specify load_limit
   auto temp_load = origin_load;
-  auto mem_limit_majority_voting = 550<<20;
-  //auto mem_limit_majority_voting = 6000000000;
+
+
+  std::ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
+  std::string line;
+  while (std::getline(infile, line))
+  {
+    std::istringstream iss(line);
+    int a, b, c;
+    if (!(iss >> a >> b >> c)) { break; } // error
+    mem_limit_majority_voting = a;
+    mode_type = b;
+    number_of_swap_blocks=c;
+  }
+
+
+
+  //mem_limit_majority_voting = 550<<20;
+  //mem_limit_majority_voting = 6000000000;
   auto vec_swap_majority_voting = SelectBlock(vec_swap,temp_load,mem_limit_majority_voting,"majority_voting");
   // vec_swap_selct_global = vec_swap_majority_voting;
 
   auto vec_load_WDOA = origin_load;
-  string mode = "stick-to-limit";
-  //string mode = "no-overhead";
+  //string mode = "stick-to-limit";
+  string mode;
+  if(mode_type == 0)
+    mode = "no-overhead";
+  else
+    mode = "stick-to-limit";
 
   double overhead_WDOA = 0;
   Scheduling(vec_swap_majority_voting, vec_load_WDOA,overhead_WDOA,mem_limit_majority_voting,mode);
@@ -507,31 +532,6 @@ void SwapGPU::DetectionPlan(){
  }
 }
 
-void SwapGPU::UpdateMetaTables(Block* block_ptr){
-
-//  update table_meta's block_ and data_; update once atfer swap test is passed.
-//  enable to update negative r_idx.
-//  it's safe in below procedure, as r_global_index and relative_counter should never be the same.
-
-
-  if (past_test_flag == 1) {
-    //update positive r_idx
-    int r_global_index = (global_index-location_of_2nd_iteration)%iteration_length;
-    if (!(table_meta.find(r_global_index)==table_meta.end())){
-        //cout << "positive one:" << r_global_index << endl;
-     table_meta.find(r_global_index)->second.block_ = block_ptr;
-      table_meta.find(r_global_index)->second.data_ = block_ptr->get_data();
-    }
-
-    //update negative r_idx
-    int relative_counter = r_global_index - iteration_length;
-    if (!(table_meta.find(relative_counter)==table_meta.end())){
-        //cout << "negtive one ?" << endl;
-      table_meta.find(relative_counter)->second.block_ = block_ptr;
-      table_meta.find(relative_counter)->second.data_ = block_ptr->get_data();
-    }
-  }
-}
 
 void SwapGPU::DeploySwap(){
 
@@ -579,10 +579,14 @@ void SwapGPU::DeploySwapExec(int r_global_index){
 
     table_not_at_device[last_meta.block_] = sync_idx;
 
+    //last_meta.block_->update_data(nullptr);
+    //pool_->Free(last_meta.data_);
+    pool_->Free(last_meta.block_->get_data());
     last_meta.block_->update_data(nullptr);
-    pool_->Free(last_meta.data_);
+    //last_meta.data_ = nullptr;
+    //todo:csc debug
 
-    last_meta.data_ = nullptr;
+
     table_meta.find(sync_idx)->second = last_meta;
     cout << "sync out succ " << endl;
   }
@@ -593,6 +597,7 @@ void SwapGPU::DeploySwapExec(int r_global_index){
     cudaEventSynchronize(last_meta.out_event);
     table_not_at_device.erase(last_meta.block_);
     last_meta.block_->update_data(last_meta.data_);
+
     table_meta.find(sync_idx)->second = last_meta;
     cout << "sync in succ " << endl;
   }
@@ -629,7 +634,6 @@ void SwapGPU::Append(InfoBlock b){
     else if(size_sequence.size() < r_global_index)
         cout << "size_sequence.size" << size_sequence.size() << endl;
   }
-  UpdateMetaTables(b.ptr);
   DeploySwap();
   DetectionPlan();
   global_index++;
@@ -642,7 +646,9 @@ void SwapGPU::SwapOut(const int idx){
   cudaError_t err;
   BlockMeta meta = table_meta.find(idx)->second;
   cudaEventCreate (&meta.out_event);
-  err = cudaMemcpyAsync(meta.cpu_ptr,meta.data_,meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
+  //err = cudaMemcpyAsync(meta.cpu_ptr,meta.data_,meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
+  err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
+  //todo:csc debug
   cudaEventRecord(meta.out_event,meta.out_stream);
   table_meta.find(idx)->second = meta;
 }

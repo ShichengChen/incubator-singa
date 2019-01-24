@@ -375,7 +375,9 @@ class SwapGPU : public Device {
   int location_of_2nd_iteration = 0; //index of start of 2nd iteration
   int location_of_5th_iteration = 0; //index of start of 5th iteration
   int three_more_iteration_global_index_threshold = -1;
-
+  int mem_limit_majority_voting=576716800;//550<<20
+  int number_of_swap_blocks=0;
+  int mode_type=0;
   //design specs
   float mem_limit_ratio = 0.70;
   size_t smallest_block = 1<<20; //1 MB
