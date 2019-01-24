@@ -57,7 +57,7 @@ namespace singa {
         double t;
         InfoBlock(Block* p, int s, int op, int i,double t):ptr(p),size(s),operation_type(op),idx(i),t(t){}
         bool operator == (const InfoBlock& rhs) const {
-            return size == rhs.size && operation_type == rhs.operation_type;
+            return size == rhs.size && operation_type == rhs.operation_type;// && ptr == rhs.ptr;
         }
     };
 /// Allocate memory and execute Tensor operations.
@@ -390,7 +390,7 @@ class SwapGPU : public Device {
   double temp_time = 0;
   double temp_time_baseline; //vec_run[0] time
   /////todo attention:add for debug
-  int iteration_length_threshold = 1000;
+  int iteration_length_threshold = 1500;
 
  private:
   shared_ptr<DeviceMemPool> pool_;

@@ -64,15 +64,13 @@ void RepeatableTest(vector<InfoBlock>vecBlock, int &iteration_length, int &locat
   */
   int idx_range = (int)vecBlock.size();
   int threshold = iteration_length_threshold;
-  vector<pair<int,int>>iteration_length_location_of_2nd_iteration;
 
   for (int i=0; i<idx_range;i++){
     if (iteration_length>threshold)break;
-    for (int len=threshold; len<(idx_range-i);len++){
+    for (int len=threshold;2*len+i<idx_range;len++){
       if (iteration_length>threshold)break;
       //cout << "should not be here" << endl;
       if(equal(vecBlock.begin()+i,vecBlock.begin()+i+len,vecBlock.begin()+i+len)) {
-
         iteration_length = len;
         location_of_2nd_iteration = i;
       }
@@ -161,7 +159,6 @@ int SwapGPU::Detection(vector<InfoBlock>vecBlock,int &iteration_length, int &loc
   //vector<size_t> vec_rep = DeviceOptSeqRepeatableTestPreProcess(vec_opt_info);
   //csc did not use size_delta
   RepeatableTest(vecBlock,iteration_length,location_of_2nd_iteration,iteration_length_threshold,global_index);
-
   //Note here location_of_2nd_iteration not exactly start of one iteration,
   //adjust to nearly start of one by restricting "Malloc"
   int shift_counter = 0;
@@ -379,6 +376,24 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
 
 }
 
+void SwapGPU::UpdateMetaTables(Block* block_ptr){
+  /*
+  update table_meta's block_ and data_; update once atfer swap test is passed.
+  enable to update negative r_idx.
+  it's safe in below procedure, as r_global_index and relative_counter should never be the same.
+  */
+
+  if (past_test_flag == 1) {
+    //update positive r_idx
+    int r_global_index = (global_index-location_of_2nd_iteration)%iteration_length;
+    if (!(table_meta.find(r_global_index)==table_meta.end())){
+     table_meta.find(r_global_index)->second.block_ = block_ptr;
+      table_meta.find(r_global_index)->second.data_ = block_ptr->get_data();
+    }
+  }
+
+}
+
 void SwapGPU::Plan(){
   /*
   major stream of functions: from make candidate blocks, selection swaps, make tables, etc.
@@ -431,7 +446,7 @@ void SwapGPU::Plan(){
       && ((vec_run_dup[i-1].operation_type==3) or (vec_run_dup[i-1].operation_type==2) or (vec_run_dup[i-1].operation_type==4)))
     {
         //todo :csc debug, remove cross blocks
-        if(vec_run_dup[i].idx >=iteration_length || vec_run_dup[i-1].idx < 0)break;
+        if(vec_run_dup[i].idx >=iteration_length || vec_run_dup[i-1].idx < 0)continue;
         SwapBlock itm(vec_run_dup[i].ptr, vec_run_dup[i].size, vec_run_dup[i-1].idx, vec_run_dup[i].idx, vec_run_dup[i-1].t, vec_run_dup[i].t);
       itm.DOA_origin = itm.d_time-itm.r_time;
       itm.DOA = itm.d_time-itm.r_time-SwapOutTime(itm.size)-SwapOutTime(itm.size);
@@ -448,7 +463,7 @@ void SwapGPU::Plan(){
       vec_swap.push_back(itm);
     }
   }
-
+  cout << "vec_swap check:" << vec_swap.size() << endl;
   ///////////////////////////////////////////////////
   ////swapable block
   //////////////////////////////////////////////////
@@ -631,6 +646,7 @@ void SwapGPU::Append(InfoBlock b){
     else if(size_sequence.size() < r_global_index)
         cout << "size_sequence.size" << size_sequence.size() << endl;
   }
+  UpdateMetaTables(b.ptr);
   DeploySwap();
   DetectionPlan();
   global_index++;
