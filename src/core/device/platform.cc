@@ -20,6 +20,10 @@
 #include "singa/core/device.h"
 #include "singa/singa_config.h"
 #include "singa/utils/opencl_utils.h"
+#include <sstream>
+#include <string>
+#include <fstream>
+
 
 namespace singa {
 
@@ -128,12 +132,28 @@ Platform::CreateCudaGPUsOn(const vector<int> &devices, size_t init_size) {
     conf.add_device(device);
     CHECK_LE(bytes, Platform::GetGPUMemSize(device).first);
   }
-  auto pool = std::make_shared<CnMemPool>(conf);
-  //auto pool = std::make_shared<CudaMemPool>();
+
+  std::ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
+  std::string line;
+  int pooltype;
+  while (std::getline(infile, line))
+  {
+    std::istringstream iss(line);
+    int a, b, c,d;
+    if (!(iss >> a >> b >> c >> d)) { break; } // error
+    pooltype = d;
+  }
+
+  std::shared_ptr<CnMemPool> pool0 = std::make_shared<CnMemPool>(conf);
+  auto pool1 = std::make_shared<CudaMemPool>();
+
+
   vector<shared_ptr<Device> > ret;
   for (auto device : devices) {
     //auto dev = std::make_shared<CudaGPU>(device, pool);
-    auto dev = std::make_shared<SwapGPU>(device, pool);
+    std::shared_ptr<SwapGPU> dev;
+    if(pooltype==0)dev = std::make_shared<SwapGPU>(device, pool0);
+    else dev = std::make_shared<SwapGPU>(device, pool1);
     ret.push_back(dev);
   }
   return ret;

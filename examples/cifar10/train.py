@@ -144,7 +144,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
     num_train_batch = train_x.shape[0] // batch_size
     num_test_batch = test_x.shape[0] // batch_size
     idx = np.arange(train_x.shape[0], dtype=np.int32)
-    for epoch in range(10):
+    for epoch in range(1):
         np.random.shuffle(idx)
         loss, acc = 0.0, 0.0
         print('Epoch %d' % epoch)

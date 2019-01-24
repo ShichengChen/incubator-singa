@@ -289,9 +289,6 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     for (int i = 0; i<vec_swap_selct.size(); i++){
       auto itm = vec_swap_selct[i];
       int ready_idx = itm.r_idx_ready;
-      //if (itm.cat == "A1") { ready_idx = itm.r_idx; }
-      //if (itm.cat == "A2") { ready_idx = itm.r_idx + data_buffer; }
-      //if (itm.cat == "A3") { ready_idx = itm.r_idx + mutable_data_buffer; }
 
       if (i > 0){
         ready_idx = std::max(ready_idx,vec_swap_selct[i-1].idx_out_end);
@@ -434,7 +431,7 @@ void SwapGPU::Plan(){
       && ((vec_run_dup[i-1].operation_type==3) or (vec_run_dup[i-1].operation_type==2) or (vec_run_dup[i-1].operation_type==4)))
     {
         //todo :csc debug, remove cross blocks
-        //if(vec_run_dup[i].idx >=iteration_length || vec_run_dup[i-1].idx < 0)break;
+        if(vec_run_dup[i].idx >=iteration_length || vec_run_dup[i-1].idx < 0)break;
         SwapBlock itm(vec_run_dup[i].ptr, vec_run_dup[i].size, vec_run_dup[i-1].idx, vec_run_dup[i].idx, vec_run_dup[i-1].t, vec_run_dup[i].t);
       itm.DOA_origin = itm.d_time-itm.r_time;
       itm.DOA = itm.d_time-itm.r_time-SwapOutTime(itm.size)-SwapOutTime(itm.size);
@@ -477,8 +474,8 @@ void SwapGPU::Plan(){
   while (std::getline(infile, line))
   {
     std::istringstream iss(line);
-    int a, b, c;
-    if (!(iss >> a >> b >> c)) { break; } // error
+    int a, b, c,d;
+    if (!(iss >> a >> b >> c >> d)) { break; } // error
     mem_limit_majority_voting = a;
     mode_type = b;
     number_of_swap_blocks=c;
