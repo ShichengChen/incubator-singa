@@ -347,6 +347,7 @@ class SwapGPU : public Device {
   //Swap asynchronous, for middle iteraions
   void SwapOut(const int idx);
   void SwapIn(const int idx);
+  int shiftForConflict(int idx,int inc);
 
  private:
   void Setup();
@@ -355,6 +356,7 @@ class SwapGPU : public Device {
   map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
   map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
   map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
+  map<int,int>conflict;
 
   //vec_block
   vector<InfoBlock>vecBlock;

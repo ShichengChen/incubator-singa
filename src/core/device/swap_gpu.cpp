@@ -45,6 +45,8 @@ struct sort_by_idx_ascending_swap{
 int SwapOutTime(size_t size){
   int ans = 0;
   //measured in 16 PCIe, pinned memory.
+  //todo;csc find real bug
+  return 1;
   if (size==0) {ans = 47200;} else {ans = 0.0756 * size + 47200;}
   return ans;
 }
@@ -52,6 +54,7 @@ int SwapOutTime(size_t size){
 int SwapInTime(size_t size){
   int ans = 0;
   //measured as per ncra ~ ncrd, 16 PCIe, pinned memory.
+  return 1;
   if (size==0) {ans = 9700;} else {ans = 0.0823 * size + 9700;}
   return ans;
 }
@@ -177,18 +180,12 @@ int SwapGPU::Detection(vector<InfoBlock>vecBlock,int &iteration_length, int &loc
   return global_index+iteration_length-(global_index-location_of_2nd_iteration)%iteration_length;
 }
 
-struct sort_by_DOA_origin_descending{
-  inline bool operator() (const SwapBlock& struct1, const SwapBlock& struct2)
-  {
-    return (struct1.DOA_origin>struct2.DOA_origin);
-  }
-};
 
 vector<SwapBlock> SwapGPU::SelectBlock(vector<SwapBlock>vec_swap,vector<double> temp_load,double mem_limit,string mode){
 
   vector<SwapBlock>vec_swap_selct;
   int cnt=0;
-  sort(vec_swap.begin(),vec_swap.end(),sort_by_DOA_origin_descending());
+  sort(vec_swap.begin(),vec_swap.end(),sort_by_idx_ascending_swap());
   //select block one by one till updated peak load is no larger than limit.
   for (int i=0; i<vec_swap.size(); i++){
     UpdateLoad(temp_load,vec_swap[i].r_idx_ready,vec_swap[i].d_idx,-1,vec_swap[i].size,iteration_length);
@@ -205,6 +202,7 @@ vector<SwapBlock> SwapGPU::SelectBlock(vector<SwapBlock>vec_swap,vector<double> 
   //return vec_swap;
   return vec_swap_selct;
 }
+
 
 void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_load_temp,double &overhead,double mem_limit,string mode){
   /*
@@ -330,35 +328,19 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
   // for (int i = static_cast<int>(vec_swap_selct.size()-1);i>=0; i--){
   for (int i =0; i<vec_swap_selct.size(); i++){
     auto itm = vec_swap_selct[i];
-    cout << "item r_idx:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
-    cout << "item d_idx:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
-    if (table_sched.find(itm.idx_out_start) == table_sched.end()){
-      table_sched[itm.idx_out_start] = std::make_tuple(itm.r_idx,0,-1,-1);
-    } else {
-      std::get<0>(table_sched.find(itm.idx_out_start)->second) = itm.r_idx;
-      std::get<1>(table_sched.find(itm.idx_out_start)->second) = 0;
-    }
-    //idx_in_start swap
-    if (table_sched.find(itm.idx_in_start) == table_sched.end()){
-      table_sched[itm.idx_in_start] = std::make_tuple(itm.r_idx,1,-1,-1);
-    } else {
-      std::get<0>(table_sched.find(itm.idx_in_start)->second) = itm.r_idx;
-      std::get<1>(table_sched.find(itm.idx_in_start)->second) = 1;
-    }
-    // idx_out_end sync
-    if (table_sched.find(itm.idx_out_end) == table_sched.end()){
-      table_sched[itm.idx_out_end] = std::make_tuple(-1,-1,itm.r_idx,0);
-    } else {
-      std::get<2>(table_sched.find(itm.idx_out_end)->second) = itm.r_idx;
-      std::get<3>(table_sched.find(itm.idx_out_end)->second) = 0;
-    }
-    //i2 sync
-    if (table_sched.find(itm.idx_in_end) == table_sched.end()){
-      table_sched[itm.idx_in_end] = std::make_tuple(-1,-1,itm.r_idx,1);
-    } else {
-      std::get<2>(table_sched.find(itm.idx_in_end)->second) = itm.r_idx;
-      std::get<3>(table_sched.find(itm.idx_in_end)->second) = 1;
-    }
+    table_sched[itm.idx_out_start] = std::make_tuple(-1,-1,-1,-1);
+    table_sched[itm.idx_in_start] = std::make_tuple(-1,-1,-1,-1);
+    table_sched[itm.idx_out_end] = std::make_tuple(-1,-1,-1,-1);
+    table_sched[itm.idx_in_end] = std::make_tuple(-1,-1,-1,-1);
+  }
+  for (int i =0; i<vec_swap_selct.size(); i++){
+    auto itm = vec_swap_selct[i];
+    //cout << "item r_idx:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
+    //cout << "item d_idx:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
+    std::get<0>(table_sched.find(itm.idx_out_start)->second) = itm.r_idx;
+    std::get<1>(table_sched.find(itm.idx_out_end)->second) = itm.r_idx;
+    std::get<2>(table_sched.find(itm.idx_in_start)->second) = itm.r_idx;
+    std::get<3>(table_sched.find(itm.idx_in_end)->second) = itm.r_idx;
 
     ///Make table_meta
     void* temp_ptr = nullptr;
@@ -368,8 +350,6 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     meta.cpu_ptr = temp_ptr;
     meta.out_stream = stream1;
     meta.in_stream = stream2;
-    meta.block_=vec_run[itm.r_idx+iteration_length].ptr;
-    //todo:csc add block ptr here
     table_meta[itm.r_idx] = meta;
 
   }
@@ -388,7 +368,6 @@ void SwapGPU::UpdateMetaTables(Block* block_ptr){
     int r_global_index = (global_index-location_of_2nd_iteration)%iteration_length;
     if (!(table_meta.find(r_global_index)==table_meta.end())){
      table_meta.find(r_global_index)->second.block_ = block_ptr;
-      table_meta.find(r_global_index)->second.data_ = block_ptr->get_data();
     }
   }
 
@@ -464,39 +443,22 @@ void SwapGPU::Plan(){
     }
   }
   cout << "vec_swap check:" << vec_swap.size() << endl;
-  ///////////////////////////////////////////////////
-  ////swapable block
-  //////////////////////////////////////////////////
-  {
-    ///load ideal, swap all vec_swap, lest possible memory by one-swap, for data collection only.
-//    auto vec_load_ideal = GetIdealLoad(vec_load,vec_swap);
-//    fstream file_load_ideal("load_ideal.csv", ios::in|ios::out|ios::app);
-//    for (int i=iteration_length; i<iteration_length*2; i++){
-//        file_load_ideal<<vec_load_ideal[i]<<endl;
-//    }
-//    auto max_ideal = GetLoadPeak(vec_load_ideal,iteration_length);
-//    size_t max_load_ideal = max_ideal.first;
-//    int max_idx_ideal = max_ideal.second;
-  }
 
 
   /// majority voting, can specify mode here, can specify load_limit
   auto temp_load = origin_load;
-
 
   std::ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
   std::string line;
   while (std::getline(infile, line))
   {
     std::istringstream iss(line);
-    int a, b, c,d;
+    int a, b, c,d,e;
     if (!(iss >> a >> b >> c >> d)) { break; } // error
     mem_limit_majority_voting = a;
     mode_type = b;
     number_of_swap_blocks=c;
   }
-
-
 
   //mem_limit_majority_voting = 550<<20;
   //mem_limit_majority_voting = 6000000000;
@@ -566,51 +528,67 @@ void SwapGPU::DeploySwap(){
   }
 }
 
+void SwapGPU::SwapOut(const int idx){
+
+  //memory copy asynchronously GPU -> CPU, and update meta.
+  cudaError_t err;
+  BlockMeta meta = table_meta.find(idx)->second;
+  cudaEventCreate (&meta.out_event);
+  if(meta.block_->get_data() == nullptr)cout << "swapout() should not have nullptr" << endl;
+  err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
+  //todo:csc debug
+  cudaEventRecord(meta.out_event,meta.out_stream);
+  table_meta.find(idx)->second = meta;
+}
+
+void SwapGPU::SwapIn(const int idx){
+
+  //memory copy asynchronously CPU -> GPU, and update meta.
+  cudaError_t err;
+  BlockMeta meta = table_meta.find(idx)->second;
+  cudaEventCreate (&meta.in_event);
+  void* ptr = nullptr;
+  pool_->Malloc((void**)&ptr, meta.size);
+  meta.block_->update_data(ptr);
+  err = cudaMemcpyAsync(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
+  cudaEventRecord(meta.in_event,meta.in_stream);
+  table_meta.find(idx)->second = meta;
+}
 
 void SwapGPU::DeploySwapExec(int r_global_index){
   //execute DeploySwap
-  auto swap_idx = std::get<0>(table_sched.find(r_global_index)->second);
-  auto swap_dir = std::get<1>(table_sched.find(r_global_index)->second);
-  auto sync_idx = std::get<2>(table_sched.find(r_global_index)->second);
-  auto sync_dir = std::get<3>(table_sched.find(r_global_index)->second);
-  if (swap_dir == 0){
+  auto out_start = std::get<0>(table_sched.find(r_global_index)->second);
+  auto out_end = std::get<1>(table_sched.find(r_global_index)->second);
+  auto in_start = std::get<2>(table_sched.find(r_global_index)->second);
+  auto in_end = std::get<3>(table_sched.find(r_global_index)->second);
+  if (out_start != -1){
       cout << "swapout" << endl;
-    SwapOut(swap_idx);
+    SwapOut(out_start);
     cout << "swapout begin" << endl;
   }
-  if (swap_dir == 1){
+  if (in_start != -1){
     cout << "swapin" << endl;
-      SwapIn(swap_idx);
+      SwapIn(in_start);
       cout << "swapin begin" << endl;
   }
-  if (sync_dir == 0){
+  if (out_end != -1){
       cout << "sync out" << endl;
     ///sync swap-out, including sync, update block's data_ to nullptr, free data_, update meta.
-    auto last_meta = table_meta.find(sync_idx)->second;
+    auto last_meta = table_meta.find(out_end)->second;
     cudaEventSynchronize(last_meta.in_event);
 
-    table_not_at_device[last_meta.block_] = sync_idx;
-
-    //last_meta.block_->update_data(nullptr);
-    //pool_->Free(last_meta.data_);
     pool_->Free(last_meta.block_->get_data());
     last_meta.block_->update_data(nullptr);
-    //last_meta.data_ = nullptr;
     //todo:csc debug
-
-
-    table_meta.find(sync_idx)->second = last_meta;
+    table_meta.find(out_end)->second = last_meta;
     cout << "sync out succ " << endl;
   }
-  if (sync_dir == 1){
+  if (in_end != -1){
     cout << "sync in" << endl;
       ///sync swap-in, including sync, update block's data_ to new gpu address, update meta.
-    auto last_meta = table_meta.find(sync_idx)->second;
+    auto last_meta = table_meta.find(in_end)->second;
     cudaEventSynchronize(last_meta.out_event);
-    table_not_at_device.erase(last_meta.block_);
-    last_meta.block_->update_data(last_meta.data_);
-
-    table_meta.find(sync_idx)->second = last_meta;
+    table_meta.find(in_end)->second = last_meta;
     cout << "sync in succ " << endl;
   }
 }
@@ -651,35 +629,6 @@ void SwapGPU::Append(InfoBlock b){
   DetectionPlan();
   global_index++;
 }
-
-
-void SwapGPU::SwapOut(const int idx){
-
-  //memory copy asynchronously GPU -> CPU, and update meta.
-  cudaError_t err;
-  BlockMeta meta = table_meta.find(idx)->second;
-  cudaEventCreate (&meta.out_event);
-  //err = cudaMemcpyAsync(meta.cpu_ptr,meta.data_,meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
-  err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
-  //todo:csc debug
-  cudaEventRecord(meta.out_event,meta.out_stream);
-  table_meta.find(idx)->second = meta;
-}
-
-void SwapGPU::SwapIn(const int idx){
-
-  //memory copy asynchronously CPU -> GPU, and update meta.
-  cudaError_t err;
-  BlockMeta meta = table_meta.find(idx)->second;
-  cudaEventCreate (&meta.in_event);
-  void* ptr = nullptr;
-  pool_->Malloc((void**)&ptr, meta.size);
-  meta.data_ = ptr;
-  err = cudaMemcpyAsync(meta.data_,meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
-  cudaEventRecord(meta.in_event,meta.in_stream);
-  table_meta.find(idx)->second = meta;
-}
-
 
 SwapGPU::~SwapGPU() {
     std::ofstream outfile;
