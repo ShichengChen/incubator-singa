@@ -1,0 +1,87 @@
+1101
+parameter name: conv1_1_1/weight	data type: 0	dim: 2	shape: 64 27
+parameter name: conv1_1_1/bias	data type: 0	dim: 1	shape: 64
+parameter name: conv1_1_2/gamma	data type: 0	dim: 1	shape: 64
+parameter name: conv1_1_2/beta	data type: 0	dim: 1	shape: 64
+parameter name: conv1_1_2/mean	data type: 0	dim: 1	shape: 64
+parameter name: conv1_1_2/var	data type: 0	dim: 1	shape: 64
+parameter name: conv1_2_1/weight	data type: 0	dim: 2	shape: 64 576
+parameter name: conv1_2_1/bias	data type: 0	dim: 1	shape: 64
+parameter name: conv1_2_2/gamma	data type: 0	dim: 1	shape: 64
+parameter name: conv1_2_2/beta	data type: 0	dim: 1	shape: 64
+parameter name: conv1_2_2/mean	data type: 0	dim: 1	shape: 64
+parameter name: conv1_2_2/var	data type: 0	dim: 1	shape: 64
+parameter name: conv2_1_1/weight	data type: 0	dim: 2	shape: 128 576
+parameter name: conv2_1_1/bias	data type: 0	dim: 1	shape: 128
+parameter name: conv2_1_2/gamma	data type: 0	dim: 1	shape: 128
+parameter name: conv2_1_2/beta	data type: 0	dim: 1	shape: 128
+parameter name: conv2_1_2/mean	data type: 0	dim: 1	shape: 128
+parameter name: conv2_1_2/var	data type: 0	dim: 1	shape: 128
+parameter name: conv2_2_1/weight	data type: 0	dim: 2	shape: 128 1152
+parameter name: conv2_2_1/bias	data type: 0	dim: 1	shape: 128
+parameter name: conv2_2_2/gamma	data type: 0	dim: 1	shape: 128
+parameter name: conv2_2_2/beta	data type: 0	dim: 1	shape: 128
+parameter name: conv2_2_2/mean	data type: 0	dim: 1	shape: 128
+parameter name: conv2_2_2/var	data type: 0	dim: 1	shape: 128
+parameter name: conv3_1_1/weight	data type: 0	dim: 2	shape: 256 1152
+parameter name: conv3_1_1/bias	data type: 0	dim: 1	shape: 256
+parameter name: conv3_1_2/gamma	data type: 0	dim: 1	shape: 256
+parameter name: conv3_1_2/beta	data type: 0	dim: 1	shape: 256
+parameter name: conv3_1_2/mean	data type: 0	dim: 1	shape: 256
+parameter name: conv3_1_2/var	data type: 0	dim: 1	shape: 256
+parameter name: conv3_2_1/weight	data type: 0	dim: 2	shape: 256 2304
+parameter name: conv3_2_1/bias	data type: 0	dim: 1	shape: 256
+parameter name: conv3_2_2/gamma	data type: 0	dim: 1	shape: 256
+parameter name: conv3_2_2/beta	data type: 0	dim: 1	shape: 256
+parameter name: conv3_2_2/mean	data type: 0	dim: 1	shape: 256
+parameter name: conv3_2_2/var	data type: 0	dim: 1	shape: 256
+parameter name: conv3_3_1/weight	data type: 0	dim: 2	shape: 256 2304
+parameter name: conv3_3_1/bias	data type: 0	dim: 1	shape: 256
+parameter name: conv3_3_2/gamma	data type: 0	dim: 1	shape: 256
+parameter name: conv3_3_2/beta	data type: 0	dim: 1	shape: 256
+parameter name: conv3_3_2/mean	data type: 0	dim: 1	shape: 256
+parameter name: conv3_3_2/var	data type: 0	dim: 1	shape: 256
+parameter name: conv4_1_1/weight	data type: 0	dim: 2	shape: 512 2304
+parameter name: conv4_1_1/bias	data type: 0	dim: 1	shape: 512
+parameter name: conv4_1_2/gamma	data type: 0	dim: 1	shape: 512
+parameter name: conv4_1_2/beta	data type: 0	dim: 1	shape: 512
+parameter name: conv4_1_2/mean	data type: 0	dim: 1	shape: 512
+parameter name: conv4_1_2/var	data type: 0	dim: 1	shape: 512
+parameter name: conv4_2_1/weight	data type: 0	dim: 2	shape: 512 4608
+parameter name: conv4_2_1/bias	data type: 0	dim: 1	shape: 512
+parameter name: conv4_2_2/gamma	data type: 0	dim: 1	shape: 512
+parameter name: conv4_2_2/beta	data type: 0	dim: 1	shape: 512
+parameter name: conv4_2_2/mean	data type: 0	dim: 1	shape: 512
+parameter name: conv4_2_2/var	data type: 0	dim: 1	shape: 512
+parameter name: conv4_3_1/weight	data type: 0	dim: 2	shape: 512 4608
+parameter name: conv4_3_1/bias	data type: 0	dim: 1	shape: 512
+parameter name: conv4_3_2/gamma	data type: 0	dim: 1	shape: 512
+parameter name: conv4_3_2/beta	data type: 0	dim: 1	shape: 512
+parameter name: conv4_3_2/mean	data type: 0	dim: 1	shape: 512
+parameter name: conv4_3_2/var	data type: 0	dim: 1	shape: 512
+parameter name: conv5_1_1/weight	data type: 0	dim: 2	shape: 512 4608
+parameter name: conv5_1_1/bias	data type: 0	dim: 1	shape: 512
+parameter name: conv5_1_2/gamma	data type: 0	dim: 1	shape: 512
+parameter name: conv5_1_2/beta	data type: 0	dim: 1	shape: 512
+parameter name: conv5_1_2/mean	data type: 0	dim: 1	shape: 512
+parameter name: conv5_1_2/var	data type: 0	dim: 1	shape: 512
+parameter name: conv5_2_1/weight	data type: 0	dim: 2	shape: 512 4608
+parameter name: conv5_2_1/bias	data type: 0	dim: 1	shape: 512
+parameter name: conv5_2_2/gamma	data type: 0	dim: 1	shape: 512
+parameter name: conv5_2_2/beta	data type: 0	dim: 1	shape: 512
+parameter name: conv5_2_2/mean	data type: 0	dim: 1	shape: 512
+parameter name: conv5_2_2/var	data type: 0	dim: 1	shape: 512
+parameter name: conv5_3_1/weight	data type: 0	dim: 2	shape: 512 4608
+parameter name: conv5_3_1/bias	data type: 0	dim: 1	shape: 512
+parameter name: conv5_3_2/gamma	data type: 0	dim: 1	shape: 512
+parameter name: conv5_3_2/beta	data type: 0	dim: 1	shape: 512
+parameter name: conv5_3_2/mean	data type: 0	dim: 1	shape: 512
+parameter name: conv5_3_2/var	data type: 0	dim: 1	shape: 512
+parameter name: ip1/weight	data type: 0	dim: 2	shape: 512 512
+parameter name: ip1/bias	data type: 0	dim: 1	shape: 512
+parameter name: batchnorm_ip1/gamma	data type: 0	dim: 1	shape: 512
+parameter name: batchnorm_ip1/beta	data type: 0	dim: 1	shape: 512
+parameter name: batchnorm_ip1/mean	data type: 0	dim: 1	shape: 512
+parameter name: batchnorm_ip1/var	data type: 0	dim: 1	shape: 512
+parameter name: ip2/weight	data type: 0	dim: 2	shape: 512 10
+parameter name: ip2/bias	data type: 0	dim: 1	shape: 10

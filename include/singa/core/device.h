@@ -352,11 +352,14 @@ class SwapGPU : public Device {
  private:
   void Setup();
 
-  map<int,BlockMeta>table_meta;
-  map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
-  map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
-  map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
-  map<int,int>conflict;
+  //map<int,BlockMeta>table_meta;
+  BlockMeta table_meta0[4000];
+  bool vistable_meta[4000];
+  //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
+  //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
+  //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
+  int table_sched[4][4000];
+  //map<int,int>conflict;
 
   //vec_block
   vector<InfoBlock>vecBlock;
