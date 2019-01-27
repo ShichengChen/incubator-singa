@@ -44,12 +44,13 @@ struct sort_by_idx_ascending_swap{
 };
 int SwapOutTime(size_t size){
   //measured in 16 PCIe, pinned memory.
-  return 0.0756 * size + 47200*3;
+  //todo:csc change size
+  return 0.0756 * size + 47200*4;
 }
 
 int SwapInTime(size_t size){
   //measured as per ncra ~ ncrd, 16 PCIe, pinned memory.
-  return 0.0823 * size + 9700*3;
+  return 0.0823 * size + 9700*4;
 }
 
 void RepeatableTest(vector<InfoBlock>vecBlock, int &iteration_length, int &location_of_2nd_iteration, int iteration_length_threshold, int global_index ){
@@ -557,8 +558,8 @@ void SwapGPU::DeploySwapExec(int r_global_index){
       cout << "sync out" << endl;
     ///sync swap-out, including sync, update block's data_ to nullptr, free data_, update meta.
     auto last_meta = table_meta0[out_end];
-    cudaEventSynchronize(last_meta.in_event);
-
+    //cudaEventSynchronize(last_meta.in_event);
+    //todo:csc not more syn in swapout
     pool_->Free(last_meta.block_->get_data());
     last_meta.block_->update_data(nullptr);
     //todo:csc debug
@@ -606,9 +607,9 @@ void SwapGPU::Append(InfoBlock b){
     else if(size_sequence.size() < r_global_index)
         cout << "size_sequence.size" << size_sequence.size() << endl;
   }
-  UpdateMetaTables(b.ptr);
-  DeploySwap();
-  DetectionPlan();
+  //UpdateMetaTables(b.ptr);
+  //DeploySwap();
+  //DetectionPlan();
   global_index++;
 }
 
