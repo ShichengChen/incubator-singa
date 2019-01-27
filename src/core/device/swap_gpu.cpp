@@ -607,9 +607,9 @@ void SwapGPU::Append(InfoBlock b){
     else if(size_sequence.size() < r_global_index)
         cout << "size_sequence.size" << size_sequence.size() << endl;
   }
-  //UpdateMetaTables(b.ptr);
-  //DeploySwap();
-  //DetectionPlan();
+  UpdateMetaTables(b.ptr);
+  DeploySwap();
+  DetectionPlan();
   global_index++;
 }
 
