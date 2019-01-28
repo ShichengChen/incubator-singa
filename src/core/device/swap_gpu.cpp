@@ -607,9 +607,9 @@ void SwapGPU::Append(InfoBlock b){
     else if(size_sequence.size() < r_global_index)
         cout << "size_sequence.size" << size_sequence.size() << endl;
   }
-  UpdateMetaTables(b.ptr);
-  DeploySwap();
-  DetectionPlan();
+  //UpdateMetaTables(b.ptr);
+  //DeploySwap();
+  //DetectionPlan();
   global_index++;
 }
 
@@ -619,7 +619,12 @@ SwapGPU::~SwapGPU() {
     for(int i = 0;i < vecBlock.size();i++)
         outfile << vecBlock[i].operation_type << "," <<vecBlock[i].ptr << "," << vecBlock[i].size<<"," << (long long)vecBlock[i].t<<"\n";
     outfile.close();
-
+    int iterlen=2318,iter2=2744;
+    cout << "iteration time duration"<<endl;
+    for(int i = 0;i < 20;i++){
+        if(iter2+iterlen*(i+1) > vecBlock.size())break;
+        cout << (long long)(vecBlock[iter2+iterlen*(i+1)].t-vecBlock[iter2+iterlen*i].t) << endl;
+    }
   if (ctx_.cublas_handle) CUBLAS_CHECK(cublasDestroy(ctx_.cublas_handle));
   if (ctx_.curand_generator)
     CURAND_CHECK(curandDestroyGenerator(ctx_.curand_generator));
