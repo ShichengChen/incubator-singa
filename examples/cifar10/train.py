@@ -41,7 +41,7 @@ import cnn
 import vgg
 import resnet
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def load_dataset(filepath):
     print('Loading data file %s' % filepath)
@@ -148,7 +148,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         np.random.shuffle(idx)
         loss, acc = 0.0, 0.0
         print('Epoch %d' % epoch)
-        for b in range(13):
+        for b in range(20):
             print ('iteration:',b)
             x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
             y = train_y[idx[b * batch_size: (b + 1) * batch_size]]

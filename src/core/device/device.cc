@@ -37,9 +37,9 @@ namespace singa {
         DoExec(std::move(fn), 0);
 
         //std::cout << "-----------" <<std::endl;
-        long long texec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        //long long texec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-        long long texec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        //long long texec1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         //std::ofstream outfile;
         //outfile.open("/home/csc/incubator-singa/examples/cifar10", std::ios_base::app);
         //outfile.open("/mount/incubator-singa/examples/cifar10/vggtxt", std::ios_base::app);

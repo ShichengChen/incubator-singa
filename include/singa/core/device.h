@@ -234,6 +234,7 @@ struct BlockMeta{
     /*
      meta of swapping memory blocks
      */
+    bool vis = false;
     Block* block_ = nullptr;
     void* data_ = nullptr;
     void* cpu_ptr = nullptr;
@@ -242,6 +243,7 @@ struct BlockMeta{
     cudaEvent_t in_event;
     cudaStream_t out_stream;
     cudaStream_t in_stream;
+    BlockMeta(bool v=false):vis(v){}
 };
 
 struct SwapBlock{
@@ -311,7 +313,7 @@ class SwapGPU : public Device {
   void DetectionPlan();
 
   //test iteration, return GC
-  int Detection(vector<InfoBlock>vecBlock,int &iteration_length, int &location_of_2nd_iteration);
+  int Detection(vector<InfoBlock>vecBlock,int &iterlen, int &location_of_2nd_iteration);
 
   //entire plan, from SelectBlock() to Scheduling(), BuildMetaTables()
   void Plan();
@@ -353,12 +355,11 @@ class SwapGPU : public Device {
   void Setup();
 
   //map<int,BlockMeta>table_meta;
-  BlockMeta table_meta0[4000];
-  bool vistable_meta[4000];
+  BlockMeta table_meta[12000];
+  int table_sched[4][12000];
   //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
   //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
   //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
-  int table_sched[4][4000];
   //map<int,int>conflict;
 
   //vec_block
@@ -376,7 +377,7 @@ class SwapGPU : public Device {
   int past_test_flag = 0; //0 means need to test, 1 means no need test anymore.
   int global_index = 0; //global counter, index, add 1 after each Malloc/Free/read/write.
   int global_index_threshold = -1;
-  int iteration_length = 0;
+  int iterlen = 0;
   int location_of_2nd_iteration = 0; //index of start of 2nd iteration
   int location_of_5th_iteration = 0; //index of start of 5th iteration
   int three_more_iteration_global_index_threshold = -1;
@@ -395,7 +396,7 @@ class SwapGPU : public Device {
   double temp_time = 0;
   double temp_time_baseline; //vec_run[0] time
   /////todo attention:add for debug
-  int iteration_length_threshold = 1500;
+  int iterlen_threshold = 1500;
 
  private:
   shared_ptr<DeviceMemPool> pool_;
