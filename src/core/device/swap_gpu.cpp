@@ -44,12 +44,12 @@ struct sort_by_idx_ascending_swap{
 };
 int SwapOutTime(size_t size){
   //measured in 16 PCIe, pinned memory.
-  return 0.0756 * size + 47200*4;
+  return (0.0756 * size + 47200*4)*1.4;
 }
 
 int SwapInTime(size_t size){
   //measured as per ncra ~ ncrd, 16 PCIe, pinned memory.
-  return 0.0823 * size + 9700*4;
+  return (0.0823 * size + 9700*4)*1.4;
 }
 
 void RepeatableTest(vector<InfoBlock>vecBlock, int &iterlen, int &location_of_2nd_iteration, int iterlen_threshold, int global_index ){
@@ -190,62 +190,51 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
 
   /// mode that stick to the mem_limit
   if (mode == "stick-to-limit"){
+    int accum = 0;
+    long long toverhead=0;
     sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
-    for (int i = 0; i<vec_swap_selct.size(); i++){
-      auto itm = vec_swap_selct[i];
-      int ready_idx = itm.r_idx;
-
-      if (i > 0){
-        ready_idx = std::max(ready_idx,vec_swap_selct[i-1].idx_out_end);
-      }
-
-      itm.idx_out_start = ready_idx;
-      itm.t_out_start = vec_run[ready_idx].t;
-      itm.t_out_end = itm.t_out_start + SwapOutTime(itm.size);
-      total_swap_out_time+=SwapOutTime(itm.size);
-      while (itm.t_out_end > vec_run[ready_idx].t){
-        //ready means when able to finish swapOut, w/ or w/o overhead.
-        ready_idx++;
-      }
-
-      //get min compare with max_idx and ready_idx.
-      ready_idx = std::min(max_idx,ready_idx);
-      UpdateLoad(vec_load_temp,ready_idx+1,itm.d_idx,-1,itm.size,iterlen);
-      auto temp_over_limit_ = GetOptIdxAboveLoadLimit(vec_load_temp,mem_limit,0,iterlen,iterlen);
-      if ((temp_over_limit_.first != -1) && (temp_over_limit_.first <= ready_idx)) {
-        UpdateLoad(vec_load_temp,temp_over_limit_.first-1,ready_idx+1,-1,itm.size,iterlen);
-        ready_idx = temp_over_limit_.first - 1;
-        overhead+=(itm.t_out_end-vec_run[ready_idx].t);
-      }
-      itm.idx_out_end = ready_idx;
-      vec_swap_selct[i] = itm;
+    for (int i = 0,cnt=0;i < vec_run.size()&&i<=max_idx;i++){
+        if(i < vec_swap_selct[0].r_idx)continue;
+        if(vec_run[i].r_idx >= max_idx)break;
+        accum +=vec_run[i].size;
+        if(i < vec_swap_selct[cnt].r_idx)continue;
+        auto itm = vec_swap_selct[cnt];
+        itm.idx_out_start = i;
+        itm.t_out_start = vec_run[i].t;
+        itm.t_out_end = vec_run[i].t + SwapOutTime(itm.size);
+        while(vec_run[i].t < itm.t_out_end){
+            if(accum+vec_run[i+1].size < mem_limit && i+1<=max_idx)
+                accum=accum+vec_run[++i].size;
+            else{
+                toverhead += (itm.t_out_end-vec_run[i].t);
+                break;
+            }
+        }
+        itm.idx_out_end=i;
+        vec_swap_selct[cnt]=itm;
+        cnt++;
     }
-
-    sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_descending_swap());
-    for (int i =0; i<vec_swap_selct.size(); i++){
-      auto itm = vec_swap_selct[i];
-      int need_idx = itm.d_idx-6;
-      //swap in advance, here is six idx
-      if (i > 0){ need_idx = std::min(need_idx,vec_swap_selct[i-1].idx_in_start); }
-      itm.idx_in_end = need_idx;
-      double prepareTime = vec_run[need_idx].t - SwapInTime(itm.size);
-      total_swap_in_time+=SwapInTime(itm.size);
-      while (prepareTime < vec_run[need_idx].t){
-        need_idx--;
-      }
-      need_idx = std::max(need_idx,max_idx+1);
-      itm.idx_in_start = need_idx;
-      itm.t_in_start = prepareTime;
-      UpdateLoad(vec_load_temp,itm.idx_in_start,itm.d_idx,1,itm.size,iterlen);
-      auto temp_over_limit_3 = GetOptIdxAboveLoadLimit(vec_load_temp,mem_limit,0,iterlen,iterlen);
-
-      if ((temp_over_limit_3.second != -1) && (vec_run[temp_over_limit_3.second+iterlen].t > itm.t_in_start)) {
-        overhead+=(vec_run[temp_over_limit_3.second+iterlen].t - itm.t_in_start);
-        UpdateLoad(vec_load_temp,itm.idx_in_start,temp_over_limit_3.second+1,-1,itm.size,iterlen);
-        itm.idx_in_start = temp_over_limit_3.second+1;
-        auto temp_over_limit_4 = GetOptIdxAboveLoadLimit(vec_load_temp,mem_limit,0,iterlen,iterlen);
-      }
-      vec_swap_selct[i] = itm;
+    std::reverse(vec_swap_selct.begin(),vec_swap_selct.end());
+    for (int i = vec_run.size()-1,cnt=0; i>=0; i--){
+      if(i > vec_swap_selct[0].r_idx)continue;
+      if(vec_run[i].r_idx <= max_idx)break;
+      accum +=vec_run[i].size;
+      if(i > vec_swap_selct[cnt].r_idx)continue;
+      auto itm = vec_swap_selct[cnt];
+      itm.idx_end_start = i;
+      itm.t_out_end = vec_run[i].t;
+      itm.t_out_start = vec_run[i].t - SwapInTime(itm.size);
+      while(vec_run[i].t > itm.t_out_end){
+            if(accum+vec_run[i-1].size < mem_limit && i-1>=max_idx)
+                accum=accum+vec_run[--i].size;
+            else{
+                toverhead += (itm.t_out_start-vec_run[i].t);
+                break;
+            }
+        }
+        itm.idx_out_start=i;
+        vec_swap_selct[cnt] = itm;
+        cnt++
     }
   }///end of first mode.
 
@@ -540,10 +529,8 @@ void SwapGPU::DeploySwapExec(int r_global_index){
     ///sync swap-out, including sync, update block's data_ to nullptr, free data_, update meta.
     auto last_meta = table_meta[out_end];
     //cudaEventSynchronize(last_meta.in_event);
-    //todo:csc not more syn in swapout
     pool_->Free(last_meta.block_->get_data());
     last_meta.block_->update_data(nullptr);
-    //todo:csc debug
     table_meta[out_end] = last_meta;
     cout << "sync out succ " << endl;
   }
