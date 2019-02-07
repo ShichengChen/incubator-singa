@@ -137,7 +137,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         fileTimeLog.write('\n')
         tic = datetime.now()
         for b in range(13): #num_train_batch):
-            print ("start of iteration %d: " %b)
+            #print ("start of iteration %d: " %b)
             #time.sleep(1)
             toc = datetime.now()
             duration_itr.append(toc-tic)
@@ -147,7 +147,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
             fileTimeLog.write('\n')
             x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
             y = train_y[idx[b * batch_size: (b + 1) * batch_size]]
-            print('numpy to singa tensor')
+            #print('numpy to singa tensor')
             tx.copy_from_numpy(x)
             ty.copy_from_numpy(y)
             print('train netword forward')

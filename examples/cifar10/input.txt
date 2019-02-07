@@ -1,5 +1,5 @@
-260000000 0 15 0
-1
+260000000 0 2 0
+0.5
 #mem_limit_majority_voting = a;
 #mode_type = b;0->no overhead,1->stick to limit
 #number_of_swap_blocks=c;

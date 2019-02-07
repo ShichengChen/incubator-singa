@@ -287,8 +287,8 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
   sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
   for (int i =0; i<vec_swap_selct.size(); i++){
     auto itm = vec_swap_selct[i];
-    //cout << "item r_idx:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
-    //cout << "item d_idx:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
+    cout << "item r_idx:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
+    cout << "item d_idx:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
     table_sched[0][itm.idx_out_start].push_back(itm.r_idx);
     table_sched[1][itm.idx_out_end].push_back(itm.r_idx);
     table_sched[2][itm.idx_in_start].push_back(itm.r_idx);
@@ -418,10 +418,8 @@ void SwapGPU::Plan(){
   auto vec_load_WDOA = origin_load;
   //string mode = "stick-to-limit";
   string mode;
-  if(mode_type == 0)
-    mode = "no-overhead";
-  else
-    mode = "stick-to-limit";
+  if(mode_type == 0)mode = "no-overhead";
+  else mode = "stick-to-limit";
 
   double overhead = 0;
   Scheduling(vec_swap_selct, vec_load_WDOA,overhead,mem_limit_majority_voting,mode);
