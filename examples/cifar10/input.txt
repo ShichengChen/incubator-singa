@@ -1,1 +1,7 @@
-5767168 0 20 1
+260000000 0 15 0
+1
+#mem_limit_majority_voting = a;
+#mode_type = b;0->no overhead,1->stick to limit
+#number_of_swap_blocks=c;
+#pooltype=d;0->CnMemPool,1->CudaMemPool
+#factor=e;swap time factor

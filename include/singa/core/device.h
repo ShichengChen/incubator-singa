@@ -351,12 +351,17 @@ class SwapGPU : public Device {
   void SwapIn(const int idx);
   int shiftForConflict(int idx,int inc);
 
+  int update_accum(int i,int accum);
+  int SwapOutTime(size_t size);
+  int SwapInTime(size_t size);
+
  private:
   void Setup();
 
   //map<int,BlockMeta>table_meta;
   BlockMeta table_meta[12000];
-  int table_sched[4][12000];
+  vector<int> table_sched[4][12000];
+  bool overheadvis[12000];
   //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
   //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
   //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
@@ -384,9 +389,10 @@ class SwapGPU : public Device {
   int mem_limit_majority_voting=576716800;//550<<20
   int number_of_swap_blocks=0;
   int mode_type=0;
+  double swap_factor=1.0;
   //design specs
   float mem_limit_ratio = 0.70;
-  size_t smallest_block = 1<<20; //1 MB
+  size_t smallest_block = (1<<22); //1 MB
   int data_buffer = 4; // used to control readyIdx
   int mutable_data_buffer = 6;
   double max_load;

@@ -23,6 +23,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include <assert.h>
 
 
 namespace singa {
@@ -133,16 +134,18 @@ Platform::CreateCudaGPUsOn(const vector<int> &devices, size_t init_size) {
     CHECK_LE(bytes, Platform::GetGPUMemSize(device).first);
   }
 
-  std::ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
-  std::string line;
+
+
   int pooltype;
-  while (std::getline(infile, line))
   {
-    std::istringstream iss(line);
-    int a, b, c,d;
-    if (!(iss >> a >> b >> c >> d)) { break; } // error
+    ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
+    assert(infile.is_open());
+    int a, b, c,d,e;
+    infile >> a >> b >> c >> d;
     pooltype = d;
+    infile.close();
   }
+  cout << "pooltype:" << pooltype << endl;
 
   std::shared_ptr<CnMemPool> pool0 = std::make_shared<CnMemPool>(conf);
   auto pool1 = std::make_shared<CudaMemPool>();
