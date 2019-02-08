@@ -51,7 +51,7 @@ namespace singa {
 
     struct InfoBlock{
         Block* ptr;
-        int size;
+        long long size;
         int operation_type;
         int idx;
         double t;
@@ -364,11 +364,11 @@ class SwapGPU : public Device {
   //map<int,BlockMeta>table_meta;
   BlockMeta table_meta[12000];
   vector<int> table_sched[4][12000];
+  map<Block*,int>removed;
   bool overheadvis[12000];
   //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
   //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
   //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
-  //map<int,int>conflict;
 
   //vec_block
   vector<InfoBlock>vecBlock;
@@ -393,9 +393,10 @@ class SwapGPU : public Device {
   int number_of_swap_blocks=0;
   int mode_type=0;
   double swap_factor=1.0;
+  int syncfactor=0;
   //design specs
   float mem_limit_ratio = 0.70;
-  size_t smallest_block = (1<<22); //1 MB
+  long long smallest_block = (1<<22); //1 MB
   int data_buffer = 4; // used to control readyIdx
   int mutable_data_buffer = 6;
   double max_load;

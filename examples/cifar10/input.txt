@@ -1,7 +1,17 @@
-260000000 0 8 0
-1.0
+90000000 0 8 0
+1
+0
 #mem_limit_majority_voting = a;
 #mode_type = b;0->no overhead,1->stick to limit
 #number_of_swap_blocks=c;
 #pooltype=d;0->CnMemPool,1->CudaMemPool
 #factor=e;swap time factor
+#syn open or not, 1 open, 0 not
+
+49-0/56-8/78-15
+>>> 49/56
+0.875
+>>> 49/78
+0.6282051282051282
+
+still bug for stick to limit

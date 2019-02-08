@@ -140,9 +140,8 @@ Platform::CreateCudaGPUsOn(const vector<int> &devices, size_t init_size) {
   {
     ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
     assert(infile.is_open());
-    int a, b, c,d,e;
-    infile >> a >> b >> c >> d;
-    pooltype = d;
+    int a, b, c;
+    infile >> a >> b >> c >> pooltype;
     infile.close();
   }
   cout << "pooltype:" << pooltype << endl;

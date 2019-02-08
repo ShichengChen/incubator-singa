@@ -256,6 +256,7 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
   cudaStream_t stream2;
   sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
   for (int i =0; i<vec_swap_selct.size(); i++){
+
     auto itm = vec_swap_selct[i];
     cout << "item r_idx:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
     cout << "item d_idx:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
@@ -276,6 +277,7 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     table_meta[itm.r_idx] = meta;
 
   }
+  //cout << table_sched[2][1423].size() << " 1423 size " << endl;
 
 }
 
@@ -341,21 +343,25 @@ void SwapGPU::Plan(){
   auto vec_run_dup = vec_run;
   sort(vec_run_dup.begin(),vec_run_dup.end(),sort_by_ptr_idx_ascending());
 
+  for (auto i : vec_run_dup)if(i.idx <= max_idx+200 && i.idx >= max_idx-200)removed[i.ptr]=1;
+
+
+
   ///formulate swappable items.
   vector<SwapBlock>vec_swap;
   for (int i =1; i<vec_run_dup.size(); i++){
     //SwapBlock(Block* p, size_t s, int idx_out_start, int idx_in_end, double t_out_start, double t_in_end):
     //ptr(p), size(s), r_idx(idx_out_start),d_idx(idx_in_end),r_time(t_out_start), d_time(t_in_end) {}
-    smallest_block=(long long)1 << 22;
-    if((vec_run_dup[i].size >= smallest_block) && (vec_run_dup[i-1].idx<max_idx) && (vec_run_dup[i].idx>max_idx)
-      && (vec_run_dup[i-1].ptr ==vec_run_dup[i].ptr)
-      && (vec_run_dup[i-1].idx < max_idx - 100) && (vec_run_dup[i].idx > max_idx + 100)
-      && ((vec_run_dup[i-1].operation_type==2)))
+    smallest_block=(1 << 22);
+    if((vec_run_dup[i].size >= smallest_block) && (vec_run_dup[i-1].idx<max_idx-200)
+      && (vec_run_dup[i].idx>max_idx+200) && (removed.find(vec_run_dup[i].ptr) == removed.end())
+      && (vec_run_dup[i-1].ptr ==vec_run_dup[i].ptr)&& (vec_run_dup[i-1].operation_type==2))
       //&& ((vec_run_dup[i-1].operation_type==3) or (vec_run_dup[i-1].operation_type==2) or (vec_run_dup[i-1].operation_type==4)))
     {
         //cout << vec_run_dup[i-1].idx-iterlen << " idx " << vec_run_dup[i].idx-iterlen << endl;
         SwapBlock itm(vec_run_dup[i].ptr, vec_run_dup[i].size, vec_run_dup[i-1].idx, vec_run_dup[i].idx, vec_run_dup[i-1].t, vec_run_dup[i].t);
         vec_swap.push_back(itm);
+        cout << vec_run_dup[i-1].idx << " idx " << vec_run_dup[i].idx << endl;
     }
   }
   cout << "vec_swap check:" << vec_swap.size() << endl;
@@ -364,21 +370,6 @@ void SwapGPU::Plan(){
   /// majority voting, can specify mode here, can specify load_limit
   auto temp_load = origin_load;
 
-
-  {
-    ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
-    assert(infile.is_open());
-    int a, b, c,d,e;
-    infile >> a >> b >> c >> d;
-    mem_limit_majority_voting = a;
-    mode_type = b;
-    number_of_swap_blocks=c;
-    infile.close();
-  }
-
-  cout << "mem_limit_majority_voting:" << mem_limit_majority_voting << endl;
-  cout << "mode_type:" << mode_type << endl;
-  cout << "number_of_swap_blocks:" << number_of_swap_blocks << endl;
   //mem_limit_majority_voting = 550<<20;
   //576716800
   //mem_limit_majority_voting = 6000000000;
@@ -427,13 +418,12 @@ void SwapGPU::DetectionPlan(){
 
 void SwapGPU::DeploySwap(){
 
-  //swap and sync as per schedule, at every index, by calling DeploySwapExec()
-
-
-  int r_global_index = (global_index-location_of_2nd_iteration)%iterlen;
-  //int r_global_index_n = r_global_index - iterlen;
-
   if (async_swap_flag == 1){
+     int r_global_index = (global_index-location_of_2nd_iteration)%iterlen;
+      //if(table_sched[2][r_global_index].size())cout << " swap in "<< r_global_index << endl;
+      //if(table_sched[1][r_global_index].size())cout << " swap out sync idx:"<< r_global_index << endl;
+
+
     if ((global_index >= three_more_iteration_global_index_threshold && global_index < three_more_iteration_global_index_threshold + iterlen)) {
         if(((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size())))
             DeploySwapOut(r_global_index);
@@ -444,7 +434,7 @@ void SwapGPU::DeploySwap(){
         /////////////////////////////////////////
         r_global_index += iterlen;
         if(((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size()))){
-            if(r_global_index<max_idx-iterlen)DeploySwapOut(r_global_index);
+            if(r_global_index<max_idx)DeploySwapOut(r_global_index);
             else DeploySwapIn(r_global_index);
         }
         /////////////////////////////////////////
@@ -483,14 +473,14 @@ void SwapGPU::SwapIn(const int idx){
 void SwapGPU::SwapInSyn(const int idx){
     cout << "sync in begin" << endl;
     auto last_meta = table_meta[idx];
-    cudaEventSynchronize(last_meta.out_event);
+    if(syncfactor)cudaEventSynchronize(last_meta.out_event);
     table_meta[idx] = last_meta;
     cout << "sync in succ " << endl;
 }
 void SwapGPU::SwapOutSyn(const int idx){
     cout << "sync out" << endl;
     auto last_meta = table_meta[idx];
-    cudaEventSynchronize(last_meta.in_event);
+    if(syncfactor)cudaEventSynchronize(last_meta.in_event);
     pool_->Free(last_meta.block_->get_data());
     last_meta.block_->update_data(nullptr);
     table_meta[idx] = last_meta;
@@ -499,12 +489,12 @@ void SwapGPU::SwapOutSyn(const int idx){
 void SwapGPU::DeploySwapOut(int r_global_index){
   for(int i = 0;i < table_sched[0][r_global_index].size();i++)
         SwapOut(table_sched[0][r_global_index][i]);
-  for(int i = 0;i < table_sched[2][r_global_index].size();i++)
-        SwapOutSyn(table_sched[2][r_global_index][i]);
+  for(int i = 0;i < table_sched[1][r_global_index].size();i++)
+        SwapOutSyn(table_sched[1][r_global_index][i]);
 }
 void SwapGPU::DeploySwapIn(int r_global_index){
-  for(int i = 0;i < table_sched[1][r_global_index].size();i++)
-        SwapIn(table_sched[1][r_global_index][i]);
+  for(int i = 0;i < table_sched[2][r_global_index].size();i++)
+        SwapIn(table_sched[2][r_global_index][i]);
   for(int i = 0;i < table_sched[3][r_global_index].size();i++)
         SwapInSyn(table_sched[3][r_global_index][i]);
 }
@@ -589,13 +579,18 @@ SwapGPU::SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool)
   {
     ifstream infile("/mount/incubator-singa/examples/cifar10/input.txt");
     assert(infile.is_open());
-    int a, b, c,d;
-    infile >> a >> b >> c >> d;
+    int d;
+    infile >> mem_limit_majority_voting >> mode_type >> number_of_swap_blocks >> d;
     infile >> swap_factor;
+    infile >> syncfactor;
+    cout << "mem_limit_majority_voting:" << mem_limit_majority_voting << endl;
+    cout << "mode_type:" << mode_type << endl;
+    cout << "number_of_swap_blocks:" << number_of_swap_blocks << endl;
     cout << "swap_factor:" << swap_factor << endl;
-
+    cout << "syncfactor:" << syncfactor << endl;
     infile.close();
   }
+
 
   memset(overheadvis,false,sizeof(overheadvis));
 }
