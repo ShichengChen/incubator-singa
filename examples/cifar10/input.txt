@@ -1,6 +1,6 @@
-90000000 0 8 0
+90000000 1 15 0
 1
-0
+1
 #mem_limit_majority_voting = a;
 #mode_type = b;0->no overhead,1->stick to limit
 #number_of_swap_blocks=c;
@@ -9,6 +9,8 @@
 #syn open or not, 1 open, 0 not
 
 49-0/56-8/78-15
+15-0.6303713741761987
+8-0.8168960936702537
 >>> 49/56
 0.875
 >>> 49/78

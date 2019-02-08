@@ -145,16 +145,17 @@ int SwapGPU::update_accum(int i,int accum){
     if(overheadvis[i])return accum;
     else{
         overheadvis[i]=true;
-        return accum+vec_run[i].size;
+        if(vec_run[i].operation_type == 1 || vec_run[i].operation_type == -1)
+            return accum+vec_run[i].size*vec_run[i].operation_type;
+        else return accum;
     }
 }
 
 void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_load_temp,double &overhead,double mem_limit,string mode){
   if (mode == "stick-to-limit"){
     overhead=0;
-    int accum = 0;
+    int accum = vec_load[vec_swap_selct[0].r_idx];
     sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
-    //cout << "vec_run.size() " << vec_run.size() << " maxidx " << max_idx<< endl;
     for (int i = vec_swap_selct[0].r_idx,cnt=0;i < vec_run.size()&&i<=max_idx&&cnt<vec_swap_selct.size();i++){
         accum=update_accum(i,accum);
         if(i < vec_swap_selct[cnt].r_idx)continue;
@@ -166,7 +167,7 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
             if(accum+vec_run[i+1].size < mem_limit && i+1<=max_idx){
                 i++;
                 accum=update_accum(i,accum);
-                cout << " accum " << accum << endl;
+                //cout << " accum " << accum << endl;
             }
             else{
                 cout << "overheadi:" << i << endl;
@@ -181,9 +182,10 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     }
     cout << "duration overhead swapout:" << overhead << endl;
 //////////////////////////////////////////
-    accum = 0;
+    accum = vec_load[iterlen*2];
     sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_descending_swap());
-    for (int i = vec_swap_selct[0].d_idx,cnt=0; i>=0&&i>=max_idx&&cnt<vec_swap_selct.size(); i--){
+    for (int i = iterlen*2,cnt=0; i>=0&&i>=max_idx&&cnt<vec_swap_selct.size(); i--){
+      //cout << " swap in i " << i << endl;
       accum=update_accum(i,accum);
       if(i > vec_swap_selct[cnt].d_idx)continue;
       auto itm = vec_swap_selct[cnt];
@@ -191,16 +193,16 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
       itm.t_out_end = vec_run[i].t;
       itm.t_out_start = vec_run[i].t - SwapInTime(itm.size);
       while(vec_run[i].t > itm.t_out_end){
-            if(accum+vec_run[i-1].size < mem_limit && i-1>=max_idx){
-                i--;
-                accum=update_accum(i,accum);
-                cout << " accum " << accum << endl;
-            }
-            else{
-                cout << "2overheadi:" << i << endl;
-                overhead += (vec_run[i].t-itm.t_out_start);
-                break;
-            }
+        if(accum+vec_run[i-1].size < mem_limit && i-1>=max_idx){
+            i--;
+            accum=update_accum(i,accum);
+            //cout << " accum " << accum << endl;
+        }
+        else{
+            cout << "2overheadi:" << i << endl;
+            overhead += (vec_run[i].t-itm.t_out_start);
+            break;
+        }
       }
       accum -= itm.size;
       itm.idx_in_start=i;
@@ -254,6 +256,10 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
 
   cudaStream_t stream1;
   cudaStream_t stream2;
+  cudaError_t result1 = cudaStreamCreate(&stream1);
+  cudaError_t result2 = cudaStreamCreate(&stream2);
+  cout << result1 << " result1 " << endl;
+  cout << result2 << " result2 " << endl;
   sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
   for (int i =0; i<vec_swap_selct.size(); i++){
 
@@ -277,8 +283,6 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     table_meta[itm.r_idx] = meta;
 
   }
-  //cout << table_sched[2][1423].size() << " 1423 size " << endl;
-
 }
 
 void SwapGPU::UpdateMetaTables(Block* block_ptr){
@@ -339,6 +343,7 @@ void SwapGPU::Plan(){
   max_load = max_current.first;
   max_idx = max_current.second+iterlen;
 
+  cout << "max_idx:"<< max_idx << endl;
   //sort by ptr & idx, sorting the duplicate
   auto vec_run_dup = vec_run;
   sort(vec_run_dup.begin(),vec_run_dup.end(),sort_by_ptr_idx_ascending());
@@ -447,26 +452,24 @@ void SwapGPU::DeploySwap(){
 
 void SwapGPU::SwapOut(const int idx){
   cout << "swapout" << endl;
-  cudaError_t err;
   BlockMeta meta = table_meta[idx];
-  cudaEventCreate (&meta.out_event);
+  if(syncfactor) cudaEventCreate (&meta.out_event);
   if(meta.block_->get_data() == nullptr)cout << "swapout() should not have nullptr" << endl;
-  err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
-  cudaEventRecord(meta.out_event,meta.out_stream);
+  cudaError_t err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
+  if(syncfactor) cudaEventRecord(meta.out_event,meta.out_stream);
   table_meta[idx] = meta;
   cout << "swapout begin" << endl;
 }
 
 void SwapGPU::SwapIn(const int idx){
   cout << "swapin" << endl;
-  cudaError_t err;
   BlockMeta meta = table_meta[idx];
-  cudaEventCreate (&meta.in_event);
+  if(syncfactor)cudaEventCreate (&meta.in_event);
   void* ptr = nullptr;
   pool_->Malloc((void**)&ptr, meta.size);
   meta.block_->update_data(ptr);
-  err = cudaMemcpyAsync(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
-  cudaEventRecord(meta.in_event,meta.in_stream);
+  cudaError_t err = cudaMemcpyAsync(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
+  if(syncfactor)cudaEventRecord(meta.in_event,meta.in_stream);
   table_meta[idx] = meta;
   cout << "swapin begin" << endl;
 }
