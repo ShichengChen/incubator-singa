@@ -334,7 +334,8 @@ class SwapGPU : public Device {
   void DeploySwap();
 
   //exec DelpoySwap
-  void DeploySwapExec(int relative_counter);
+  void DeploySwapOut(int relative_counter);
+  void DeploySwapIn(int relative_counter);
 
   //load profile as per synchronous swap.
   vector<double> GetIdealLoad(vector<double>vec_load,vector<SwapBlock> vec_swap_selct);
@@ -349,6 +350,8 @@ class SwapGPU : public Device {
   //Swap asynchronous, for middle iteraions
   void SwapOut(const int idx);
   void SwapIn(const int idx);
+  void SwapOutSyn(const int idx);
+  void SwapInSyn(const int idx);
   int shiftForConflict(int idx,int inc);
 
   int update_accum(int i,int accum);

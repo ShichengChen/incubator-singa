@@ -101,36 +101,6 @@ pair<double,int> GetLoadPeak(vector<double>vec_load_test,int iterlen){
 
 
 
-pair<int,int> GetOptIdxAboveLoadLimit(vector<double>vec_load, size_t mem_limit, int start_idx, int end_idx,int iterlen){
-  /*
-  get operation index (range) that above the load limit.
-  input: vec_load, mem_limit, range [start_idx, end_idx)
-  return range overlimit [first_over_limit, first_below_limit)
-  */
-  int first_over_limit = start_idx;
-  int first_below_limit = end_idx;
-
-  for (int i = start_idx+iterlen; i < end_idx+iterlen; i++){
-    if (vec_load[i] > mem_limit){
-      first_over_limit = i-iterlen;
-      break;
-    }
-  }
-
-  for (int i = end_idx+iterlen; i > first_over_limit+iterlen; i--){
-    if (vec_load[i] > mem_limit){
-      first_below_limit = i-1-iterlen;
-      break;
-    }
-  }
-
-  if (first_over_limit == start_idx) first_over_limit = -1;
-
-  if (first_below_limit == end_idx) first_below_limit = -1;
-
-  return std::make_pair(first_over_limit, first_below_limit);
-}
-
 int SwapGPU::Detection(vector<InfoBlock>vecBlock,int &iterlen, int &location_of_2nd_iteration){
   /*
   test repeatability, detect iteration, and return global_index_threshold.
@@ -465,40 +435,40 @@ void SwapGPU::DeploySwap(){
 
   if (async_swap_flag == 1){
     if ((global_index >= three_more_iteration_global_index_threshold && global_index < three_more_iteration_global_index_threshold + iterlen)) {
-        bool i = ((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size()));
-        if(i)DeploySwapExec(r_global_index);
+        if(((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size())))
+            DeploySwapOut(r_global_index);
     }
     if ((global_index >= three_more_iteration_global_index_threshold + iterlen)) {
-        bool i = ((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size()));
-        if(i)DeploySwapExec(r_global_index);
+        if(((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size())))
+            DeploySwapOut(r_global_index);
         /////////////////////////////////////////
         r_global_index += iterlen;
-        i = ((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size()));
-        if(i)DeploySwapExec(r_global_index);
+        if(((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size()))){
+            if(r_global_index<max_idx-iterlen)DeploySwapOut(r_global_index);
+            else DeploySwapIn(r_global_index);
+        }
         /////////////////////////////////////////
         r_global_index += iterlen;
-        i = ((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size()));
-        if(i)DeploySwapExec(r_global_index);
+        if(((table_sched[0][r_global_index].size()) || (table_sched[1][r_global_index].size()) || (table_sched[2][r_global_index].size()) || (table_sched[3][r_global_index].size())))
+            DeploySwapIn(r_global_index);
     }
   }
 }
 
 void SwapGPU::SwapOut(const int idx){
-
-  //memory copy asynchronously GPU -> CPU, and update meta.
+  cout << "swapout" << endl;
   cudaError_t err;
   BlockMeta meta = table_meta[idx];
   cudaEventCreate (&meta.out_event);
   if(meta.block_->get_data() == nullptr)cout << "swapout() should not have nullptr" << endl;
   err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
-  //todo:csc debug
   cudaEventRecord(meta.out_event,meta.out_stream);
   table_meta[idx] = meta;
+  cout << "swapout begin" << endl;
 }
 
 void SwapGPU::SwapIn(const int idx){
-
-  //memory copy asynchronously CPU -> GPU, and update meta.
+  cout << "swapin" << endl;
   cudaError_t err;
   BlockMeta meta = table_meta[idx];
   cudaEventCreate (&meta.in_event);
@@ -508,38 +478,35 @@ void SwapGPU::SwapIn(const int idx){
   err = cudaMemcpyAsync(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
   cudaEventRecord(meta.in_event,meta.in_stream);
   table_meta[idx] = meta;
+  cout << "swapin begin" << endl;
 }
-
-void SwapGPU::DeploySwapExec(int r_global_index){
-  for(int i = 0;i < table_sched[0][r_global_index].size();i++){
-          cout << "swapout" << endl;
-          SwapOut(table_sched[0][r_global_index][i]);
-          cout << "swapout begin" << endl;
-  }
-  for(int i = 0;i < table_sched[1][r_global_index].size();i++){
-          cout << "swapin" << endl;
-          SwapIn(table_sched[1][r_global_index][i]);
-          cout << "swapin begin" << endl;
-  }
-  for(int i = 0;i < table_sched[2][r_global_index].size();i++){
-      cout << "sync out" << endl;
-    ///sync swap-out, including sync, update block's data_ to nullptr, free data_, update meta.
-    int out_end = table_sched[2][r_global_index][i];
-    auto last_meta = table_meta[out_end];
+void SwapGPU::SwapInSyn(const int idx){
+    cout << "sync in begin" << endl;
+    auto last_meta = table_meta[idx];
+    cudaEventSynchronize(last_meta.out_event);
+    table_meta[idx] = last_meta;
+    cout << "sync in succ " << endl;
+}
+void SwapGPU::SwapOutSyn(const int idx){
+    cout << "sync out" << endl;
+    auto last_meta = table_meta[idx];
     cudaEventSynchronize(last_meta.in_event);
     pool_->Free(last_meta.block_->get_data());
     last_meta.block_->update_data(nullptr);
-    table_meta[out_end] = last_meta;
+    table_meta[idx] = last_meta;
     cout << "sync out succ " << endl;
-  }
-  for(int i = 0;i < table_sched[3][r_global_index].size();i++){
-    int in_end = table_sched[3][r_global_index][i];
-    cout << "sync in begin" << endl;
-    auto last_meta = table_meta[in_end];
-    cudaEventSynchronize(last_meta.out_event);
-    table_meta[in_end] = last_meta;
-    cout << "sync in succ " << endl;
-  }
+}
+void SwapGPU::DeploySwapOut(int r_global_index){
+  for(int i = 0;i < table_sched[0][r_global_index].size();i++)
+        SwapOut(table_sched[0][r_global_index][i]);
+  for(int i = 0;i < table_sched[2][r_global_index].size();i++)
+        SwapOutSyn(table_sched[2][r_global_index][i]);
+}
+void SwapGPU::DeploySwapIn(int r_global_index){
+  for(int i = 0;i < table_sched[1][r_global_index].size();i++)
+        SwapIn(table_sched[1][r_global_index][i]);
+  for(int i = 0;i < table_sched[3][r_global_index].size();i++)
+        SwapInSyn(table_sched[3][r_global_index][i]);
 }
 
 void SwapGPU::Append(InfoBlock b){
