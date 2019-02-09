@@ -51,7 +51,7 @@ namespace singa {
 
     struct InfoBlock{
         Block* ptr;
-        long long size;
+        int size;
         int operation_type;
         int idx;
         double t;
@@ -223,11 +223,11 @@ struct DeviceOptInfo{
      members: [ptr, size, operation_type, idx]
      */
     string ptr;
-    size_t size;
+    int size;
     int operation_type;
     int idx;
     double t;
-    DeviceOptInfo(string p, size_t s, int M, int i):ptr(p),size(s),operation_type(M),idx(i){}
+    DeviceOptInfo(string p, int s, int M, int i):ptr(p),size(s),operation_type(M),idx(i){}
 };
 
 struct BlockMeta{
@@ -238,7 +238,7 @@ struct BlockMeta{
     Block* block_ = nullptr;
     void* data_ = nullptr;
     void* cpu_ptr = nullptr;
-    size_t size = 0;
+    int size = 0;
     cudaEvent_t out_event;
     cudaEvent_t in_event;
     cudaStream_t out_stream;
@@ -253,7 +253,7 @@ struct SwapBlock{
     Block* ptr;
     string cat; //sub category of the candidate blocks, read-read, write-read, etc.
     int name;
-    size_t size;
+    int size;
     //index of last read/write before swap out, and first read/write after swap in
     int r_idx; //out idx
     int d_idx; //in idx
@@ -354,15 +354,16 @@ class SwapGPU : public Device {
   void SwapInSyn(const int idx);
   int shiftForConflict(int idx,int inc);
 
-  int update_accum(int i,int accum);
-  int SwapOutTime(size_t size);
-  int SwapInTime(size_t size);
+  int update_accum(int i,int accum,int pos_neg);
+  int check_accum(int i,int accum,int pos_neg);
+  int SwapOutTime(int size);
+  int SwapInTime(int size);
 
  private:
   void Setup();
 
-  //map<int,BlockMeta>table_meta;
-  BlockMeta table_meta[12000];
+  map<int,BlockMeta>table_meta;
+  //BlockMeta table_meta[12000];
   vector<int> table_sched[4][12000];
   map<Block*,int>removed;
   bool overheadvis[12000];
@@ -379,7 +380,7 @@ class SwapGPU : public Device {
   vector<double>origin_load; //3 iteration load, for planning.
   vector<InfoBlock>vec_run;
   vector<int>operation_sequence; //sequence of operations of one middle iteration
-  vector<size_t>size_sequence; //size of all operations of one middle iteration
+  vector<int>size_sequence; //size of all operations of one middle iteration
 
   int async_swap_flag = 0; //0 for sync, 1 for async.
   int past_test_flag = 0; //0 means need to test, 1 means no need test anymore.

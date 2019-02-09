@@ -34,6 +34,11 @@ struct sort_by_ptr_idx_ascending{
         return ((struct1.ptr<struct2.ptr)||((struct1.ptr==struct2.ptr)&&(struct1.idx<struct2.idx)));
     }
 };
+struct sort_by_didx_ascending_swap{
+  inline bool operator() (const SwapBlock& struct1, const SwapBlock& struct2){
+    return (struct1.d_idx<struct2.d_idx);
+  }
+};
 struct sort_by_idx_descending_swap{
   inline bool operator() (const SwapBlock& struct1, const SwapBlock& struct2){
     return (struct1.d_idx>struct2.d_idx);
@@ -44,12 +49,12 @@ struct sort_by_idx_ascending_swap{
     return (struct1.r_idx<struct2.r_idx);
   }
 };
-int SwapGPU::SwapOutTime(size_t size){
+int SwapGPU::SwapOutTime(int size){
   //measured in 16 PCIe, pinned memory.
   return (0.0756 * size + 47200) * swap_factor;
 }
 
-int SwapGPU::SwapInTime(size_t size){
+int SwapGPU::SwapInTime(int size){
   //measured as per ncra ~ ncrd, 16 PCIe, pinned memory.
   return (0.0823 * size + 9700) * swap_factor;
 }
@@ -75,7 +80,7 @@ void RepeatableTest(vector<InfoBlock>vecBlock, int &iterlen, int &location_of_2n
   }
 }
 
-void UpdateLoad(vector<double>& vec_load,int start_idx, int end_idx, int plus_minus, size_t size,int iterlen){
+void UpdateLoad(vector<double>& vec_load,int start_idx, int end_idx, int plus_minus, int size,int iterlen){
   /*
   update load [start_idx, end_idx) by plus_minus*size
   */
@@ -108,9 +113,6 @@ int SwapGPU::Detection(vector<InfoBlock>vecBlock,int &iterlen, int &location_of_
 
   ///vec_str (vecBlock) to vec_opt_info, sort by ptr and idx.
   int idx_range = (int)(vecBlock.size());
-  ///rep test
-  //vector<size_t> vec_rep = DeviceOptSeqRepeatableTestPreProcess(vec_opt_info);
-  //csc did not use size_delta
   RepeatableTest(vecBlock,iterlen,location_of_2nd_iteration,iterlen_threshold,global_index);
   //Note here location_of_2nd_iteration not exactly start of one iteration,
   //adjust to nearly start of one by restricting "Malloc"
@@ -140,13 +142,25 @@ vector<SwapBlock> SwapGPU::SelectBlock(vector<SwapBlock>vec_swap,vector<double> 
   }
   return vec_swap_selct;
 }
-
-int SwapGPU::update_accum(int i,int accum){
+int SwapGPU::check_accum(int i,int accum,int pos_neg){
+    if(overheadvis[i])return accum;
+    else{
+        if(vec_run[i].operation_type == 1 || vec_run[i].operation_type == -1){
+            return accum+vec_run[i].size*vec_run[i].operation_type*pos_neg;
+        }
+        else return accum;
+    }
+}
+int SwapGPU::update_accum(int i,int accum,int pos_neg){
     if(overheadvis[i])return accum;
     else{
         overheadvis[i]=true;
-        if(vec_run[i].operation_type == 1 || vec_run[i].operation_type == -1)
-            return accum+vec_run[i].size*vec_run[i].operation_type;
+        if(vec_run[i].operation_type == 1 || vec_run[i].operation_type == -1){
+            //cout << " oper type?"<< vec_run[i].operation_type<< endl;
+            //cout << " vec_run size:"<< vec_run[i].size << endl;
+            //cout << "vec_run idx:"<<vec_run[i].idx << endl;
+            return accum+vec_run[i].size*vec_run[i].operation_type*pos_neg;
+        }
         else return accum;
     }
 }
@@ -154,19 +168,21 @@ int SwapGPU::update_accum(int i,int accum){
 void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_load_temp,double &overhead,double mem_limit,string mode){
   if (mode == "stick-to-limit"){
     overhead=0;
-    int accum = vec_load[vec_swap_selct[0].r_idx];
+    int accum = 0;
     sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
-    for (int i = vec_swap_selct[0].r_idx,cnt=0;i < vec_run.size()&&i<=max_idx&&cnt<vec_swap_selct.size();i++){
-        accum=update_accum(i,accum);
+    int cnt=0;
+    for (int i = 0;i < vec_run.size()&&i<=max_idx&&cnt<vec_swap_selct.size();i++){
+        accum=update_accum(i,accum,1);
+        //cout << " out accum:"<< accum << endl;
         if(i < vec_swap_selct[cnt].r_idx)continue;
         auto itm = vec_swap_selct[cnt];
         itm.idx_out_start = i;
         itm.t_out_start = vec_run[i].t;
         itm.t_out_end = vec_run[i].t + SwapOutTime(itm.size);
         while(vec_run[i].t < itm.t_out_end){
-            if(accum+vec_run[i+1].size < mem_limit && i+1<=max_idx){
+            if(check_accum(i+1,accum,1) < mem_limit && i+1<=max_idx){
                 i++;
-                accum=update_accum(i,accum);
+                accum=update_accum(i,accum,1);
                 //cout << " accum " << accum << endl;
             }
             else{
@@ -180,32 +196,46 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
         vec_swap_selct[cnt]=itm;
         cnt++;
     }
+    int originalsize=vec_swap_selct.size();
+    for(int i = cnt;i<originalsize;i++){
+        cout << "remove ith element:" << i << endl;
+        vec_swap_selct.erase(vec_swap_selct.begin() + i);
+    }
     cout << "duration overhead swapout:" << overhead << endl;
 //////////////////////////////////////////
-    accum = vec_load[iterlen*2];
-    sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_descending_swap());
-    for (int i = iterlen*2,cnt=0; i>=0&&i>=max_idx&&cnt<vec_swap_selct.size(); i--){
-      //cout << " swap in i " << i << endl;
-      accum=update_accum(i,accum);
-      if(i > vec_swap_selct[cnt].d_idx)continue;
-      auto itm = vec_swap_selct[cnt];
-      itm.idx_in_end = i;
-      itm.t_out_end = vec_run[i].t;
-      itm.t_out_start = vec_run[i].t - SwapInTime(itm.size);
-      while(vec_run[i].t > itm.t_out_end){
-        if(accum+vec_run[i-1].size < mem_limit && i-1>=max_idx){
-            i--;
-            accum=update_accum(i,accum);
-            //cout << " accum " << accum << endl;
-        }
-        else{
-            cout << "2overheadi:" << i << endl;
-            overhead += (vec_run[i].t-itm.t_out_start);
-            break;
-        }
+    int endi=iterlen*2;
+    sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_didx_ascending_swap());
+    for (int i = max_idx,cnt=0; i<=endi&&cnt<vec_swap_selct.size(); i++){
+      accum=update_accum(i,accum,+1);
+      if(accum + vec_swap_selct[cnt].size >= mem_limit){
+          cout << "cannot swap in now " << endl;
+          continue;
       }
-      accum -= itm.size;
-      itm.idx_in_start=i;
+      auto itm = vec_swap_selct[cnt];
+      itm.idx_in_start = i;
+      if(i > itm.d_idx){
+          itm.idx_in_start=itm.idx_in_end=itm.d_idx;
+          cout << "report here:" << itm.d_idx  << endl;
+          vec_swap_selct[cnt] = itm;
+          cnt++;
+          continue;
+      }
+      itm.t_out_end = vec_run[i].t+SwapInTime(itm.size);
+      itm.t_out_start = vec_run[i].t;
+      accum += itm.size;
+      while(vec_run[i].t < itm.t_out_end){
+          if(i+1>=itm.d_idx){
+              cout << "overheadi:" << i << endl;
+              overhead += (itm.t_out_end-vec_run[i].t);
+              break;
+          }
+          else{
+              i++;
+              //cout << "in accum " << accum << endl;
+              accum=update_accum(i,accum,1);
+          }
+      }
+      itm.idx_in_end=i;
       vec_swap_selct[cnt] = itm;
       cnt++;
     }
@@ -295,11 +325,11 @@ void SwapGPU::UpdateMetaTables(Block* block_ptr){
   if (past_test_flag == 1) {
     //update positive r_idx
     int r_global_index = (global_index-location_of_2nd_iteration)%iterlen;
-    if (table_meta[r_global_index].vis)
+    if (table_meta.find(r_global_index)!=table_meta.end())
         table_meta[r_global_index].block_ = block_ptr;
-    else if(table_meta[r_global_index+iterlen].vis)
+    else if(table_meta.find(r_global_index+iterlen)!=table_meta.end())
         table_meta[r_global_index+iterlen].block_ = block_ptr;
-    else if(table_meta[r_global_index+iterlen*2].vis)
+    else if(table_meta.find(r_global_index+iterlen*2)!=table_meta.end())
         table_meta[r_global_index+iterlen*2].block_ = block_ptr;
   }
 
