@@ -569,7 +569,7 @@ void SwapGPU::Append(InfoBlock b){
 
 SwapGPU::~SwapGPU() {
     std::ofstream outfile;
-    outfile.open("/mount/incubator-singa/examples/cifar10/vggswap");
+    outfile.open("/mount/incubator-singa/examples/cifar10/"+outputfile);
     for(int i = 0;i < vecBlock.size();i++)
         outfile << vecBlock[i].operation_type << "," <<vecBlock[i].ptr << "," << vecBlock[i].size<<"," << (long long)vecBlock[i].t<<"\n";
     outfile.close();
@@ -615,11 +615,13 @@ SwapGPU::SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool)
     infile >> mem_limit_majority_voting >> mode_type >> number_of_swap_blocks >> d;
     infile >> swap_factor;
     infile >> syncfactor;
+    infile >> outputfile;
     cout << "mem_limit_majority_voting:" << mem_limit_majority_voting << endl;
     cout << "mode_type:" << mode_type << endl;
     cout << "number_of_swap_blocks:" << number_of_swap_blocks << endl;
     cout << "swap_factor:" << swap_factor << endl;
     cout << "syncfactor:" << syncfactor << endl;
+    cout << "outputfile:" << outputfile << endl;
     infile.close();
   }
 

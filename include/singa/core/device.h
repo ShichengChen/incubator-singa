@@ -25,6 +25,7 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <string>
 
 #include "singa/singa_config.h"
 #include "singa/core/common.h"
@@ -363,10 +364,10 @@ class SwapGPU : public Device {
   void Setup();
 
   //map<int,BlockMeta>table_meta;
-  BlockMeta table_meta[12000];
-  vector<int> table_sched[4][12000];
+  BlockMeta table_meta[120000];
+  vector<int> table_sched[4][120000];
   map<Block*,int>removed;
-  bool overheadvis[12000];
+  bool overheadvis[120000];
   //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
   //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
   //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
@@ -393,6 +394,7 @@ class SwapGPU : public Device {
   int mem_limit_majority_voting=576716800;//550<<20
   int number_of_swap_blocks=0;
   int mode_type=0;
+  string outputfile;
   double swap_factor=1.0;
   int syncfactor=0;
   //design specs
