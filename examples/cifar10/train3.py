@@ -22,6 +22,8 @@ from singa.proto import core_pb2
 
 #import resnet3 as resnet
 import vgg3 as vgg
+import resnet3 as resnet
+#import resnet
 import unet
 
 from datetime import datetime
@@ -228,5 +230,6 @@ if __name__ == '__main__':
         train_x, test_x = normalize_for_alexnet(train_x, test_x)
         depth = args.depth
         net = resnet.create_net(depth,args.use_cpu)
+        #net = resnet.create_net(args.use_cpu)
         train((train_x, train_y, test_x, test_y), net, 200, resnet_lr, 1e-4,
               use_cpu=args.use_cpu,batch_size=args.batch_size)

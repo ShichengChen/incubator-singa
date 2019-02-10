@@ -225,12 +225,11 @@ def resnet152(pretrained=False, **kwargs):
 
 
 if __name__ == '__main__':
-    model = resnet34()
+    model = resnet18()
     print('Start intialization............')
-    dev = device.create_cuda_gpu_on(1)
+    dev = device.create_cuda_gpu_on(0)
     #dev = device.create_cuda_gpu()
     niters = 200
-    niters = 10
     batch_size = 16
     IMG_SIZE = 224
     sgd = opt.SGD(lr=0.1, momentum=0.9, weight_decay=1e-5)
@@ -243,11 +242,11 @@ if __name__ == '__main__':
     tx.copy_from_numpy(x)
     ty.copy_from_numpy(y)
 
-    for i in np.arange(10):
-        print('start forward')
-        x = model(tx)
-        loss = autograd.softmax_cross_entropy(x, ty)
-        print('start backward')
-        for p, g in autograd.backward(loss):
-            sgd.update(p, g)
-        print('end iteration',i)
+    with trange(niters) as t:
+        for b in t:
+            x = model(tx)
+            loss = autograd.softmax_cross_entropy(x, ty)
+            for p, g in autograd.backward(loss):
+                # print(p.shape, g.shape)
+                sgd.update(p, g)
+                #pass

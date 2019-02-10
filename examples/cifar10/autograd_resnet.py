@@ -36,7 +36,7 @@ __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return autograd.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                           padding=1, bias=False)
+                           padding=1, bias=True)
 
 
 class BasicBlock(autograd.Layer):
@@ -53,7 +53,7 @@ class BasicBlock(autograd.Layer):
 
     def __call__(self, x):
         residual = x
-
+        #print(x.shape)
         out = self.conv1(x)
         out = self.bn1(out)
         out = autograd.relu(out)
@@ -114,36 +114,32 @@ class Bottleneck(autograd.Layer):
 
 class ResNet(autograd.Layer):
 
-    def __init__(self, block, layers, num_classes=1000):
-        self.inplanes = 64
+    def __init__(self, block, layers, num_classes=10):
         super(ResNet, self).__init__()
-        self.conv1 = autograd.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+        inp=32
+        self.conv1 = autograd.Conv2d(3, inp, kernel_size=3, stride=1, padding=1,
                                      bias=False)
-        self.bn1 = autograd.BatchNorm2d(64)
-        self.maxpool = autograd.MaxPool2d(
-            kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.avgpool = autograd.AvgPool2d(7, stride=1)
-        self.fc = autograd.Linear(512 * block.expansion, num_classes)
+        self.bn1 = autograd.BatchNorm2d(inp)
+        self.layer1 = self._make_layer(block, inp,inp, layers[0])
+        self.layer2 = self._make_layer(block, inp,inp*2, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, inp*2,inp*4, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, inp*4,inp*4, layers[3], stride=1)
+        self.avgpool = autograd.AvgPool2d(8, stride=8)
+        self.fc = autograd.Linear(inp*4, num_classes)
 
-    def _make_layer(self, block, planes, blocks, stride=1):
+    def _make_layer(self, block, inp,outp, blocks, stride=1):
         downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            conv = autograd.Conv2d(self.inplanes, planes * block.expansion,
-                                   kernel_size=1, stride=stride, bias=False)
-            bn = autograd.BatchNorm2d(planes * block.expansion)
+        if stride != 1 or inp!=outp:
+            conv = autograd.Conv2d(inp, outp,kernel_size=1, stride=stride, bias=False)
+            bn = autograd.BatchNorm2d(outp)
 
             def downsample(x):
                 return bn(conv(x))
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
+        layers.append(block(inp, outp, stride, downsample))
+        for i in range(blocks):
+            layers.append(block(outp, outp))
 
         def forward(x):
             for layer in layers:
@@ -155,7 +151,6 @@ class ResNet(autograd.Layer):
         x = self.conv1(x)
         x = self.bn1(x)
         x = autograd.relu(x)
-        x = self.maxpool(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -231,28 +226,27 @@ if __name__ == '__main__':
     #dev = device.create_cuda_gpu()
     niters = 200
     niters = 10
-    batch_size = 50
-    IMG_SIZE = 224
-    sgd = opt.SGD(lr=0.1, momentum=0.9, weight_decay=1e-5)
+    batch_size = 100
+    IMG_SIZE = 32
+    sgd = opt.SGD(lr=0.1, momentum=0.9, weight_decay=1e-4)
 
     tx = tensor.Tensor((batch_size, 3, IMG_SIZE, IMG_SIZE), dev)
     ty = tensor.Tensor((batch_size,), dev, tensor.int32)
     autograd.training = True
-    train_x=np.random.randn(batch_size*niters, 3, IMG_SIZE, IMG_SIZE).astype(np.float32)
-    #x = np.random.randn(batch_size*niters, 3, IMG_SIZE, IMG_SIZE).astype(np.float32)
-    train_y = np.random.randint(0, 1000, batch_size*niters, dtype=np.int32)
-
+    train_x=np.random.randn(batch_size*batch_size, 3, IMG_SIZE, IMG_SIZE).astype(np.float32)
+    train_y = np.random.randint(0, 10, batch_size*batch_size, dtype=np.int32)
+    idx = np.arange(train_x.shape[0], dtype=np.int32)
     for i in np.arange(niters):
-
-        x = train_x[i * batch_size: (i + 1) * batch_size]
-        y = train_y[i * batch_size: (i + 1) * batch_size]
+        np.random.shuffle(idx)
+        x = train_x[idx[i * batch_size: (i + 1) * batch_size]]
+        y = train_y[idx[i * batch_size: (i + 1) * batch_size]]
         #print('numpy to singa tensor')
         tx.copy_from_numpy(x)
         ty.copy_from_numpy(y)
 
         print('start forward')
-        x = model(tx)
-        loss = autograd.softmax_cross_entropy(x, ty)
+        output = model(tx)
+        loss = autograd.softmax_cross_entropy(output, ty)
         print('start backward')
         for p, g in autograd.backward(loss):
             sgd.update(p, g)
