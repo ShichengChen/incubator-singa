@@ -362,8 +362,8 @@ class SwapGPU : public Device {
  private:
   void Setup();
 
-  map<int,BlockMeta>table_meta;
-  //BlockMeta table_meta[12000];
+  //map<int,BlockMeta>table_meta;
+  BlockMeta table_meta[12000];
   vector<int> table_sched[4][12000];
   map<Block*,int>removed;
   bool overheadvis[12000];

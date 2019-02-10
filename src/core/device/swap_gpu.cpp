@@ -249,7 +249,7 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     for (int i = 0; i<vec_swap_selct.size(); i++){
       auto itm = vec_swap_selct[i];
       int ready_idx = itm.r_idx;
-
+      if(i > 0)ready_idx--;
       if (i > 0){
         ready_idx = std::max(ready_idx,vec_swap_selct[i-1].idx_out_end);
       }
@@ -267,7 +267,6 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     for (int i =0; i<vec_swap_selct.size(); i++){
       auto itm = vec_swap_selct[i];
       int need_idx = itm.d_idx;
-      //todo:csc tried syn swapin with earier deadline
       if (i > 0){ need_idx = std::min(need_idx,vec_swap_selct[i-1].idx_in_start); }
       itm.idx_in_end = need_idx;
       double prepareTime = vec_run[need_idx].t - SwapInTime(itm.size);
@@ -325,11 +324,11 @@ void SwapGPU::UpdateMetaTables(Block* block_ptr){
   if (past_test_flag == 1) {
     //update positive r_idx
     int r_global_index = (global_index-location_of_2nd_iteration)%iterlen;
-    if (table_meta.find(r_global_index)!=table_meta.end())
+    if (table_meta[r_global_index].vis)
         table_meta[r_global_index].block_ = block_ptr;
-    else if(table_meta.find(r_global_index+iterlen)!=table_meta.end())
+    else if(table_meta[r_global_index+iterlen].vis)
         table_meta[r_global_index+iterlen].block_ = block_ptr;
-    else if(table_meta.find(r_global_index+iterlen*2)!=table_meta.end())
+    else if(table_meta[r_global_index+iterlen*2].vis)
         table_meta[r_global_index+iterlen*2].block_ = block_ptr;
   }
 
@@ -624,7 +623,7 @@ SwapGPU::SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool)
     infile.close();
   }
 
-
+  memset(table_meta,0,sizeof(table_meta));
   memset(overheadvis,false,sizeof(overheadvis));
 }
 

@@ -1,6 +1,6 @@
-1195000000 0 0 0
+95000000 0 0 0
 1
-1
+0
 #mem_limit_majority_voting = a;
 #mode_type = b;0->no overhead,1->stick to limit
 #number_of_swap_blocks=c;
@@ -8,10 +8,12 @@
 #factor=e;swap time factor
 #syn open or not, 1 open, 0 not
 
-49-0/56-8/78-15
+49-0/55-8/74-15
 15-0.6303713741761987
 8-0.8168960936702537
 >>> 49/55
 0.8909090909090909
->>> 49/73
-0.65685504
+save memory 0.8168960936702537
+>>> 49/74
+0.66
+save memory 0.6303713741761987

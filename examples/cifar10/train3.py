@@ -22,6 +22,7 @@ from singa.proto import core_pb2
 
 #import resnet3 as resnet
 import vgg3 as vgg
+import unet
 
 from datetime import datetime
 import time
@@ -185,7 +186,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train dcnn for cifar10')
-    parser.add_argument('model', choices=['vgg', 'alexnet', 'resnet', 'caffe'],
+    parser.add_argument('model', choices=['vgg', 'alexnet', 'resnet', 'caffe','unet'],
                         default='alexnet')
     parser.add_argument('data', default='cifar-10-batches-py')
     parser.add_argument('--use_cpu', action='store_true')
@@ -215,6 +216,12 @@ if __name__ == '__main__':
         train_x, test_x = normalize_for_vgg(train_x, test_x)
         depth = args.depth
         net = vgg.create_net(depth,args.use_cpu)
+        train((train_x, train_y, test_x, test_y), net, 250, vgg_lr, 0.0005,
+              use_cpu=args.use_cpu,batch_size=args.batch_size)
+    elif args.model == 'unet':
+        train_x, test_x = normalize_for_vgg(train_x, test_x)
+        depth = args.depth
+        net = unet.create_net(args.use_cpu)
         train((train_x, train_y, test_x, test_y), net, 250, vgg_lr, 0.0005,
               use_cpu=args.use_cpu,batch_size=args.batch_size)
     else:
