@@ -1,7 +1,7 @@
-95000000 0 0 0
-0.01
+95000000 0 5 0
 1
-resnetswap
+0
+autoresnetswap
 #mem_limit_majority_voting = a;
 #mode_type = b;0->no overhead,1->stick to limit
 #number_of_swap_blocks=c;

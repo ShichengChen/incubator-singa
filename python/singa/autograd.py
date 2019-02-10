@@ -714,6 +714,7 @@ class _Conv2d(Operation):
 
     def __init__(self, handle):
         self.handle = handle
+        self.rand=1
 
     def forward(self, x, W, b):
         assert x.nDim() == 4, 'The dimensions of input should be 4D.'
@@ -736,6 +737,8 @@ class _Conv2d(Operation):
 
         if dy.device().id() != self.handle.device_id:
             dy.ToDevice(self.inputs[0].device())
+
+        if(self.rand<0.5):return dy
 
         if self.handle.device_id == -1:
             dx = singa.CpuConvBackwardx(
@@ -767,7 +770,6 @@ class Conv2d(Layer):
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1, bias=True, **kwargs):
-
         self.in_channels = in_channels
         self.out_channels = out_channels
 

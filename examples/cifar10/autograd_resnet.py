@@ -50,10 +50,12 @@ class BasicBlock(autograd.Layer):
         self.bn2 = autograd.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
+        self.rand = 1
 
     def __call__(self, x):
         residual = x
-        #print(x.shape)
+        rand = np.random.uniform(0,1)
+        #if(rand<0.5):return self.downsample(x) if self.downsample is not None else x
         out = self.conv1(x)
         out = self.bn1(out)
         out = autograd.relu(out)
@@ -116,7 +118,7 @@ class ResNet(autograd.Layer):
 
     def __init__(self, block, layers, num_classes=10):
         super(ResNet, self).__init__()
-        inp=32
+        inp=16
         self.conv1 = autograd.Conv2d(3, inp, kernel_size=3, stride=1, padding=1,
                                      bias=False)
         self.bn1 = autograd.BatchNorm2d(inp)
@@ -225,8 +227,8 @@ if __name__ == '__main__':
     dev = device.create_cuda_gpu_on(1)
     #dev = device.create_cuda_gpu()
     niters = 200
-    niters = 10
-    batch_size = 100
+    niters = 13
+    batch_size = 200
     IMG_SIZE = 32
     sgd = opt.SGD(lr=0.1, momentum=0.9, weight_decay=1e-4)
 
