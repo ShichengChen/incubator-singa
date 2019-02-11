@@ -24,10 +24,11 @@ from singa import autograd
 from singa import tensor
 from singa import device
 from singa import opt
-
+import time
 import numpy as np
 from tqdm import trange
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
@@ -36,7 +37,7 @@ __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return autograd.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                           padding=1, bias=True)
+                           padding=1)
 
 
 class BasicBlock(autograd.Layer):
@@ -78,14 +79,14 @@ class Bottleneck(autograd.Layer):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = autograd.Conv2d(
-            inplanes, planes, kernel_size=1, bias=False)
+            inplanes, planes, kernel_size=1)
         self.bn1 = autograd.BatchNorm2d(planes)
         self.conv2 = autograd.Conv2d(planes, planes, kernel_size=3,
                                      stride=stride,
-                                     padding=1, bias=False)
+                                     padding=1)
         self.bn2 = autograd.BatchNorm2d(planes)
         self.conv3 = autograd.Conv2d(
-            planes, planes * self.expansion, kernel_size=1, bias=False)
+            planes, planes * self.expansion, kernel_size=1)
         self.bn3 = autograd.BatchNorm2d(planes * self.expansion)
 
         self.downsample = downsample
@@ -119,29 +120,28 @@ class ResNet(autograd.Layer):
     def __init__(self, block, layers, num_classes=10):
         super(ResNet, self).__init__()
         inp=16
-        self.conv1 = autograd.Conv2d(3, inp, kernel_size=3, stride=1, padding=1,
-                                     bias=False)
+        self.conv1 = autograd.Conv2d(3, inp, kernel_size=3, stride=1, padding=1)
         self.bn1 = autograd.BatchNorm2d(inp)
-        self.layer1 = self._make_layer(block, inp,inp, layers[0])
-        self.layer2 = self._make_layer(block, inp,inp*2, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, inp*2,inp*4, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, inp*4,inp*4, layers[3], stride=1)
+        self.layer1 = self._make_layer( inp,inp, layers[0])
+        self.layer2 = self._make_layer( inp,inp*2, layers[1], stride=2)
+        self.layer3 = self._make_layer( inp*2,inp*4, layers[2], stride=2)
+        self.layer4 = self._make_layer( inp*4,inp*4, layers[3], stride=1)
         self.avgpool = autograd.AvgPool2d(8, stride=8)
         self.fc = autograd.Linear(inp*4, num_classes)
 
-    def _make_layer(self, block, inp,outp, blocks, stride=1):
+    def _make_layer(self,  inp,outp, blocks, stride=1):
         downsample = None
         if stride != 1 or inp!=outp:
-            conv = autograd.Conv2d(inp, outp,kernel_size=1, stride=stride, bias=False)
+            conv = autograd.Conv2d(inp, outp,kernel_size=1, stride=stride)
             bn = autograd.BatchNorm2d(outp)
 
             def downsample(x):
                 return bn(conv(x))
 
         layers = []
-        layers.append(block(inp, outp, stride, downsample))
+        layers.append(BasicBlock(inp, outp, stride, downsample))
         for i in range(blocks):
-            layers.append(block(outp, outp))
+            layers.append(BasicBlock(outp, outp))
 
         def forward(x):
             for layer in layers:
@@ -224,8 +224,8 @@ def resnet152(pretrained=False, **kwargs):
 if __name__ == '__main__':
     model = resnet18()
     print('Start intialization............')
-    dev = device.create_cuda_gpu_on(1)
-    #dev = device.create_cuda_gpu()
+    #dev = device.create_cuda_gpu_on()
+    dev = device.create_cuda_gpu()
     niters = 200
     niters = 13
     batch_size = 200
@@ -239,6 +239,7 @@ if __name__ == '__main__':
     train_y = np.random.randint(0, 10, batch_size*batch_size, dtype=np.int32)
     idx = np.arange(train_x.shape[0], dtype=np.int32)
     for i in np.arange(niters):
+        time.sleep(1)
         np.random.shuffle(idx)
         x = train_x[idx[i * batch_size: (i + 1) * batch_size]]
         y = train_y[idx[i * batch_size: (i + 1) * batch_size]]

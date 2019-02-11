@@ -1,20 +1,30 @@
-95000000 0 5 0
+88290129 1 15 0
 1
-0
-autoresnetswap
+1
+resnetswap
 #mem_limit_majority_voting = a;
 #mode_type = b;0->no overhead,1->stick to limit
 #number_of_swap_blocks=c;
 #pooltype=d;0->CnMemPool,1->CudaMemPool
 #factor=e;swap time factor
 #syn open or not, 1 open, 0 not
+#unet16
+#resnet18
+#vgg15
 
-49-0/55-8/74-15
-15-0.6303713741761987
-8-0.8168960936702537
->>> 49/55
-0.8909090909090909
-save memory 0.8168960936702537
->>> 49/74
-0.66
-save memory 0.6303713741761987
+resnet
+save %10 memory use %9 extra computation time
+save %16 memory use %22 extra computation time
+save %30 memory use %33 extra computation time
+
+unet
+save %27 memory use %32 extra computation time
+save %20 memory use %22 extra computation time
+save %12 memory use %8 extra computation time
+
+vgg
+save %30 memory use %35 extra computation time
+save %17 memory use %14 extra computation time
+save %10 memory use %9 extra computation time
+
+

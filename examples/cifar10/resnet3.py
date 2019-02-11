@@ -122,20 +122,18 @@ def create_net(depth, use_cpu=False):
 
     if depth <= 34:
       Block(net, "2a", plane, 1)
-
       for i in range(1,conf[0]):
         Block(net,'2%d' %i,plane,1)
 
-      Block(net, "3a", plane*2, 2,expand=True)
-
+      Block(net, "3a", plane, 1,expand=True)
       for i in range(1,conf[1]):
-        Block(net,'3%d' %i,plane*2,1)
+        Block(net,'3%d' %i,plane,1)
       
-      Block(net, "4a", plane*4, 2)
+      Block(net, "4a", plane*2, 2)
       for i in range(1,conf[2]):
-        Block(net,'4%d' %i,plane*4,1)
+        Block(net,'4%d' %i,plane*2,1)
 
-      Block(net, "5a", plane*4, 1)
+      Block(net, "5a", plane*4, 2,expand=True)
       for i in range(1,conf[3]):
         Block(net,'5%d' %i,plane*4,1)
 

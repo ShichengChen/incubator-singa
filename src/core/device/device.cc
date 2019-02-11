@@ -34,7 +34,7 @@ namespace singa {
     void Device::Exec(function<void(Context*)>&& fn, const vector<Block*> read_blocks,
                       const vector<Block*> write_blocks, bool use_rand_generator) {
         // TODO(wangwei) execute operations scheduled by the scheduler.
-        DoExec(std::move(fn), 0);
+
 
         //std::cout << "-----------" <<std::endl;
         //long long texec0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -51,6 +51,7 @@ namespace singa {
             //outfile << "read," << *it << "," <<(*it)->size() << "," << now<<"\n";
             Append(InfoBlock(*it,(*it)->size(),2,-1,now));
         }
+        DoExec(std::move(fn), 0);
         for(auto it = write_blocks.begin(); it != write_blocks.end(); it++){
             if((*it) == 0)break;
             long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -59,7 +60,6 @@ namespace singa {
             //outfile << "mutable," << *it << "," <<(*it)->size() << "," << now<< "\n";
             Append(InfoBlock(*it,(*it)->size(),4,-1,now));
         }
-
         //outfile.close();
 
 

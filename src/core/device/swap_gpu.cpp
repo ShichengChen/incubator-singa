@@ -183,7 +183,7 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
             if(check_accum(i+1,accum,1) < mem_limit && i+1<=max_idx){
                 i++;
                 accum=update_accum(i,accum,1);
-                //cout << " accum " << accum << endl;
+                cout << " accum " << accum << endl;
             }
             else{
                 cout << "overheadi:" << i << endl;
@@ -231,7 +231,7 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
           }
           else{
               i++;
-              //cout << "in accum " << accum << endl;
+              cout << "in accum " << accum << endl;
               accum=update_accum(i,accum,1);
           }
       }
