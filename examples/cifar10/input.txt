@@ -2,12 +2,15 @@
 1
 1
 resnetswap
+1
 #mem_limit_majority_voting = a;
 #mode_type = b;0->no overhead,1->stick to limit
 #number_of_swap_blocks=c;
 #pooltype=d;0->CnMemPool,1->CudaMemPool
 #factor=e;swap time factor
 #syn open or not, 1 open, 0 not
+#name of output file
+#read from file or not
 #unet16
 #resnet18
 #vgg15

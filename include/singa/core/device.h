@@ -368,6 +368,7 @@ class SwapGPU : public Device {
   vector<int> table_sched[4][120000];
   map<Block*,int>removed;
   bool overheadvis[120000];
+  int rfornot=0;
   //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
   //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
   //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx

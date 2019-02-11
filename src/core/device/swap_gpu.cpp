@@ -136,10 +136,27 @@ int SwapGPU::Detection(vector<InfoBlock>vecBlock,int &iterlen, int &location_of_
 vector<SwapBlock> SwapGPU::SelectBlock(vector<SwapBlock>vec_swap,vector<double> temp_load,double mem_limit,string mode){
 
   vector<SwapBlock>vec_swap_selct;
-  sort(vec_swap.begin(),vec_swap.end(),sort_by_idx_ascending_swap());
-  for (int i=0; i<vec_swap.size() && i < number_of_swap_blocks; i++){
-    vec_swap_selct.push_back(vec_swap[i]);
+  vector<int>checkfile;
+
+  if(rfornot){
+        for(int i=0; i<vec_swap.size();i++)checkfile.push_back(0);
+        ifstream infile("/mount/incubator-singa/examples/cifar10/rffile.txt");
+        assert(infile.is_open());
+        int numofblocks;
+        infile >> numofblocks;
+        for(int i = 0;i < numofblocks;i++){
+            int cur;
+            infile >>cur;
+            checkfile[cur]=1;
+        }
   }
+  else for(int i=0; i<vec_swap.size();i++)checkfile.push_back(1);
+
+
+  sort(vec_swap.begin(),vec_swap.end(),sort_by_idx_ascending_swap());
+  for (int i=0; i<vec_swap.size() && i < number_of_swap_blocks; i++)
+      if(checkfile[i])vec_swap_selct.push_back(vec_swap[i]);
+
   return vec_swap_selct;
 }
 int SwapGPU::check_accum(int i,int accum,int pos_neg){
@@ -616,12 +633,14 @@ SwapGPU::SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool)
     infile >> swap_factor;
     infile >> syncfactor;
     infile >> outputfile;
+    infile >> rfornot;
     cout << "mem_limit_majority_voting:" << mem_limit_majority_voting << endl;
     cout << "mode_type:" << mode_type << endl;
     cout << "number_of_swap_blocks:" << number_of_swap_blocks << endl;
     cout << "swap_factor:" << swap_factor << endl;
     cout << "syncfactor:" << syncfactor << endl;
     cout << "outputfile:" << outputfile << endl;
+    cout << "rfornot:" << rfornot << endl;
     infile.close();
   }
 
