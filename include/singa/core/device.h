@@ -398,6 +398,9 @@ class SwapGPU : public Device {
   string outputfile;
   double swap_factor=1.0;
   int syncfactor=0;
+  int deploytime=0;
+  int swapInOpen=1;
+  int swapOutOpen=1;
   //design specs
   float mem_limit_ratio = 0.70;
   long long smallest_block = (1<<22); //1 MB

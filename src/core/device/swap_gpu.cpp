@@ -293,7 +293,24 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
       itm.idx_in_start = need_idx;
       itm.t_in_start = prepareTime;
       vec_swap_selct[i] = itm;
-      UpdateLoad(vec_load_temp,itm.idx_out_end,itm.idx_in_start+1,-1,itm.size,iterlen);
+      //UpdateLoad(vec_load_temp,itm.idx_out_end,itm.idx_in_start+1,-1,itm.size,iterlen);
+    }
+  }
+  if (mode == "queue-mode"){
+    sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_descending_swap());
+    for (int i =0; i<vec_swap_selct.size(); i++){
+      auto itm = vec_swap_selct[i];
+      int need_idx = itm.d_idx;
+      if (i > 0){ need_idx = std::min(need_idx,vec_swap_selct[i-1].idx_in_start); }
+      itm.idx_in_end = need_idx;
+      double prepareTime = vec_run[need_idx].t - SwapInTime(itm.size);
+      while (prepareTime < vec_run[need_idx].t)need_idx--;
+      itm.idx_in_start = need_idx;
+      itm.t_in_start = prepareTime;
+
+      itm.idx_out_start=itm.r_idx;//idx out queue
+
+      vec_swap_selct[i] = itm;
     }
   }
 }
@@ -304,8 +321,8 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
   cudaStream_t stream2;
   cudaError_t result1 = cudaStreamCreate(&stream1);
   cudaError_t result2 = cudaStreamCreate(&stream2);
-  //cout << result1 << " result1 " << endl;
-  //cout << result2 << " result2 " << endl;
+  assert(result1==cudaSuccess);
+  assert(result2==cudaSuccess);
   sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
   for (int i =0; i<vec_swap_selct.size(); i++){
 
@@ -313,7 +330,7 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     cout << "item r_idx:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
     cout << "item d_idx:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
     table_sched[0][itm.idx_out_start].push_back(itm.r_idx);
-    table_sched[1][itm.idx_out_end].push_back(itm.r_idx);
+    if(mode_type!=2)table_sched[1][itm.idx_out_end].push_back(itm.r_idx);
     table_sched[2][itm.idx_in_start].push_back(itm.r_idx);
     table_sched[3][itm.idx_in_end].push_back(itm.r_idx);
 
@@ -323,8 +340,9 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     BlockMeta meta;
     meta.size = itm.size;
     meta.cpu_ptr = temp_ptr;
-    meta.out_stream = stream1;
-    meta.in_stream = stream2;
+    meta.out_stream = ctx_.stream;
+    meta.in_stream = ctx_.stream;
+    //todo: change in out stream all to stream1
     meta.vis=true;
     table_meta[itm.r_idx] = meta;
 
@@ -431,7 +449,8 @@ void SwapGPU::Plan(){
   //string mode = "stick-to-limit";
   string mode;
   if(mode_type == 0)mode = "no-overhead";
-  else mode = "stick-to-limit";
+  else if(mode_type == 1) mode = "stick-to-limit";
+  else mode = "queue-mode";
 
   double overhead = 0;
   Scheduling(vec_swap_selct, vec_load_WDOA,overhead,mem_limit_majority_voting,mode);
@@ -497,6 +516,7 @@ void SwapGPU::DeploySwap(){
 }
 
 void SwapGPU::SwapOut(const int idx){
+  if(swapOutOpen==0)return;
   cout << "swapout" << endl;
   long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   BlockMeta meta = table_meta[idx];
@@ -510,20 +530,23 @@ void SwapGPU::SwapOut(const int idx){
 }
 
 void SwapGPU::SwapIn(const int idx){
+  if(swapInOpen==0)return;
   cout << "swapin" << endl;
   long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   BlockMeta meta = table_meta[idx];
   if(syncfactor)cudaEventCreate (&meta.in_event);
-  void* ptr = nullptr;
-  pool_->Malloc((void**)&ptr, meta.size);
-  meta.block_->update_data(ptr);
+  //void* ptr = nullptr;
+  //pool_->Malloc((void**)&ptr, meta.size);
+  //meta.block_->update_data(ptr);
   cudaError_t err = cudaMemcpyAsync(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
   if(syncfactor)cudaEventRecord(meta.in_event,meta.in_stream);
   table_meta[idx] = meta;
   long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   cout << "swapin begin" <<now1-now0 << endl;
+  deploytime+=(now1-now0);
 }
 void SwapGPU::SwapInSyn(const int idx){
+    if(swapInOpen==0)return;
     cout << "sync in begin" << endl;
     long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto last_meta = table_meta[idx];
@@ -531,17 +554,20 @@ void SwapGPU::SwapInSyn(const int idx){
     table_meta[idx] = last_meta;
     long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     cout << "sync in succ " <<now1-now0 << endl;
+    deploytime+=(now1-now0);
 }
 void SwapGPU::SwapOutSyn(const int idx){
+    if(swapOutOpen==0)return;
     cout << "sync out" << endl;
     long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto last_meta = table_meta[idx];
     if(syncfactor)cudaEventSynchronize(last_meta.in_event);
-    pool_->Free(last_meta.block_->get_data());
-    last_meta.block_->update_data(nullptr);
+    //pool_->Free(last_meta.block_->get_data());
+    //last_meta.block_->update_data(nullptr);
     table_meta[idx] = last_meta;
     long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     cout << "sync out succ " <<now1-now0 << endl;
+    deploytime+=(now1-now0);
 }
 void SwapGPU::DeploySwapOut(int r_global_index){
   for(int i = 0;i < table_sched[0][r_global_index].size();i++)
@@ -593,6 +619,7 @@ void SwapGPU::Append(InfoBlock b){
 }
 
 SwapGPU::~SwapGPU() {
+    cout << "deploytime:"<<deploytime<<endl;
     std::ofstream outfile;
     outfile.open("/mount/incubator-singa/examples/cifar10/"+outputfile);
     for(int i = 0;i < vecBlock.size();i++)
@@ -642,6 +669,7 @@ SwapGPU::SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool)
     infile >> syncfactor;
     infile >> outputfile;
     infile >> rfornot;
+    infile >> swapOutOpen>>swapInOpen;
     cout << "mem_limit_majority_voting:" << mem_limit_majority_voting << endl;
     cout << "mode_type:" << mode_type << endl;
     cout << "number_of_swap_blocks:" << number_of_swap_blocks << endl;
@@ -649,6 +677,7 @@ SwapGPU::SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool)
     cout << "syncfactor:" << syncfactor << endl;
     cout << "outputfile:" << outputfile << endl;
     cout << "rfornot:" << rfornot << endl;
+    cout << "swap in out open or not:" << swapOutOpen << "," << swapInOpen << endl;
     infile.close();
   }
 
@@ -673,9 +702,14 @@ void SwapGPU::Setup() {
 #ifdef USE_CUDNN
   // TODO(wangwei) create one handle for each stream?
   auto status = cudnnCreate(&ctx_.cudnn_handle);
-  cudaStreamCreate(&ctx_.stream);
-  cudnnSetStream(ctx_.cudnn_handle,ctx_.stream);
-
+  cudaError_t err0 = cudaStreamCreate(&ctx_.stream);
+  assert(err0==cudaSuccess);
+  cudnnStatus_t err = cudnnSetStream(ctx_.cudnn_handle,ctx_.stream);
+  assert(err==CUDNN_STATUS_SUCCESS);
+  cudaStream_t stream3;
+  auto errs = cudnnGetStream(ctx_.cudnn_handle,&stream3);
+  cout << "cudnn set stream" << ctx_.stream << " "<< stream3 << endl;
+  assert(CUDNN_STATUS_SUCCESS==errs);
   CHECK_EQ(status, CUDNN_STATUS_SUCCESS) << cudnnGetErrorString(status);
 #endif  // USE_CUDNN
 }
