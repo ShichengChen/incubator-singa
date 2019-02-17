@@ -1,6 +1,6 @@
-88290129 1 15 0
+88290129 0 30 0
 1
-1
+0
 resnetswap
 1
 #mem_limit_majority_voting = a;
@@ -11,9 +11,9 @@ resnetswap
 #syn open or not, 1 open, 0 not
 #name of output file
 #read from file or not
-#unet16
-#resnet18
-#vgg15
+#unet16*2
+#resnet18*2
+#vgg15*2
 
 resnet
 save %10 memory use %9 extra computation time

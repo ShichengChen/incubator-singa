@@ -266,7 +266,7 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     for (int i = 0; i<vec_swap_selct.size(); i++){
       auto itm = vec_swap_selct[i];
       int ready_idx = itm.r_idx;
-      if(i > 0)ready_idx--;
+      //if(i > 0)ready_idx--;
       if (i > 0){
         ready_idx = std::max(ready_idx,vec_swap_selct[i-1].idx_out_end);
       }
@@ -304,8 +304,8 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
   cudaStream_t stream2;
   cudaError_t result1 = cudaStreamCreate(&stream1);
   cudaError_t result2 = cudaStreamCreate(&stream2);
-  cout << result1 << " result1 " << endl;
-  cout << result2 << " result2 " << endl;
+  //cout << result1 << " result1 " << endl;
+  //cout << result2 << " result2 " << endl;
   sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
   for (int i =0; i<vec_swap_selct.size(); i++){
 
@@ -498,17 +498,20 @@ void SwapGPU::DeploySwap(){
 
 void SwapGPU::SwapOut(const int idx){
   cout << "swapout" << endl;
+  long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   BlockMeta meta = table_meta[idx];
   if(syncfactor) cudaEventCreate (&meta.out_event);
   if(meta.block_->get_data() == nullptr)cout << "swapout() should not have nullptr" << endl;
   cudaError_t err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
   if(syncfactor) cudaEventRecord(meta.out_event,meta.out_stream);
   table_meta[idx] = meta;
-  cout << "swapout begin" << endl;
+  long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  cout << "swapout begin:" <<now1-now0 << endl;
 }
 
 void SwapGPU::SwapIn(const int idx){
   cout << "swapin" << endl;
+  long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   BlockMeta meta = table_meta[idx];
   if(syncfactor)cudaEventCreate (&meta.in_event);
   void* ptr = nullptr;
@@ -517,23 +520,28 @@ void SwapGPU::SwapIn(const int idx){
   cudaError_t err = cudaMemcpyAsync(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
   if(syncfactor)cudaEventRecord(meta.in_event,meta.in_stream);
   table_meta[idx] = meta;
-  cout << "swapin begin" << endl;
+  long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  cout << "swapin begin" <<now1-now0 << endl;
 }
 void SwapGPU::SwapInSyn(const int idx){
     cout << "sync in begin" << endl;
+    long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto last_meta = table_meta[idx];
     if(syncfactor)cudaEventSynchronize(last_meta.out_event);
     table_meta[idx] = last_meta;
-    cout << "sync in succ " << endl;
+    long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    cout << "sync in succ " <<now1-now0 << endl;
 }
 void SwapGPU::SwapOutSyn(const int idx){
     cout << "sync out" << endl;
+    long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto last_meta = table_meta[idx];
     if(syncfactor)cudaEventSynchronize(last_meta.in_event);
     pool_->Free(last_meta.block_->get_data());
     last_meta.block_->update_data(nullptr);
     table_meta[idx] = last_meta;
-    cout << "sync out succ " << endl;
+    long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    cout << "sync out succ " <<now1-now0 << endl;
 }
 void SwapGPU::DeploySwapOut(int r_global_index){
   for(int i = 0;i < table_sched[0][r_global_index].size();i++)
@@ -665,6 +673,9 @@ void SwapGPU::Setup() {
 #ifdef USE_CUDNN
   // TODO(wangwei) create one handle for each stream?
   auto status = cudnnCreate(&ctx_.cudnn_handle);
+  cudaStreamCreate(&ctx_.stream);
+  cudnnSetStream(ctx_.cudnn_handle,ctx_.stream);
+
   CHECK_EQ(status, CUDNN_STATUS_SUCCESS) << cudnnGetErrorString(status);
 #endif  // USE_CUDNN
 }
