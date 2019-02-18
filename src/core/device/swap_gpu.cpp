@@ -340,8 +340,11 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     BlockMeta meta;
     meta.size = itm.size;
     meta.cpu_ptr = temp_ptr;
+    //meta.out_stream = stream1;
     meta.out_stream = ctx_.stream;
+    //meta.in_stream = stream2;
     meta.in_stream = ctx_.stream;
+    //todo: even use ctx_.stream, still same time, no overlap at all
     //todo: change in out stream all to stream1
     meta.vis=true;
     table_meta[itm.r_idx] = meta;
@@ -523,6 +526,8 @@ void SwapGPU::SwapOut(const int idx){
   if(syncfactor) cudaEventCreate (&meta.out_event);
   if(meta.block_->get_data() == nullptr)cout << "swapout() should not have nullptr" << endl;
   cudaError_t err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
+  //cudaError_t err = cudaMemcpy(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost);
+  assert(err==cudaSuccess);
   if(syncfactor) cudaEventRecord(meta.out_event,meta.out_stream);
   table_meta[idx] = meta;
   long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -535,10 +540,12 @@ void SwapGPU::SwapIn(const int idx){
   long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   BlockMeta meta = table_meta[idx];
   if(syncfactor)cudaEventCreate (&meta.in_event);
-  //void* ptr = nullptr;
-  //pool_->Malloc((void**)&ptr, meta.size);
-  //meta.block_->update_data(ptr);
+  void* ptr = nullptr;
+  pool_->Malloc((void**)&ptr, meta.size);
+  meta.block_->update_data(ptr);
   cudaError_t err = cudaMemcpyAsync(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice,meta.in_stream);
+  //cudaError_t err = cudaMemcpy(meta.block_->get_data(),meta.cpu_ptr,meta.size,cudaMemcpyHostToDevice);
+  assert(err==cudaSuccess);
   if(syncfactor)cudaEventRecord(meta.in_event,meta.in_stream);
   table_meta[idx] = meta;
   long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -687,7 +694,7 @@ SwapGPU::SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool)
 
 void SwapGPU::Setup() {
   lang_ = kCuda;
-  ctx_.stream = NULL;  // use the default sync stream
+  //ctx_.stream = NULL;  // use the default sync stream
   // TODO(wangwei) create one handle for each steam?
   CUDA_CHECK(cudaSetDevice(id_));
   // use curandCreateGeneratorHost for CudaHost device
