@@ -319,8 +319,10 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
 
   cudaStream_t stream1;
   cudaStream_t stream2;
-  cudaError_t result1 = cudaStreamCreate(&stream1);
-  cudaError_t result2 = cudaStreamCreate(&stream2);
+  //cudaError_t result1 = cudaStreamCreate(&stream1);
+  //cudaError_t result2 = cudaStreamCreate(&stream2);
+  cudaError_t result1 = cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
+  cudaError_t result2 = cudaStreamCreateWithFlags(&stream2,cudaStreamNonBlocking);
   assert(result1==cudaSuccess);
   assert(result2==cudaSuccess);
   sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
@@ -340,10 +342,10 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     BlockMeta meta;
     meta.size = itm.size;
     meta.cpu_ptr = temp_ptr;
-    //meta.out_stream = stream1;
-    meta.out_stream = ctx_.stream;
-    //meta.in_stream = stream2;
-    meta.in_stream = ctx_.stream;
+    meta.out_stream = stream1;
+    //meta.out_stream = ctx_.stream;
+    meta.in_stream = stream2;
+    //meta.in_stream = ctx_.stream;
     //todo: even use ctx_.stream, still same time, no overlap at all
     //todo: change in out stream all to stream1
     meta.vis=true;
@@ -569,8 +571,8 @@ void SwapGPU::SwapOutSyn(const int idx){
     long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto last_meta = table_meta[idx];
     if(syncfactor)cudaEventSynchronize(last_meta.in_event);
-    //pool_->Free(last_meta.block_->get_data());
-    //last_meta.block_->update_data(nullptr);
+    pool_->Free(last_meta.block_->get_data());
+    last_meta.block_->update_data(nullptr);
     table_meta[idx] = last_meta;
     long long now1 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     cout << "sync out succ " <<now1-now0 << endl;
