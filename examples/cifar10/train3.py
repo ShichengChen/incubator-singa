@@ -29,7 +29,7 @@ import unet
 from datetime import datetime
 import time
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 def load_dataset(filepath):
     print('Loading data file %s' % filepath)
     with open(filepath, 'rb') as fd:

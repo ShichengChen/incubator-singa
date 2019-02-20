@@ -297,19 +297,27 @@ void SwapGPU::Scheduling(vector<SwapBlock>&vec_swap_selct, vector<double>&vec_lo
     }
   }
   if (mode == "queue-mode"){
+    sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_ascending_swap());
+    for (int i = 0; i<vec_swap_selct.size(); i++){
+      auto itm = vec_swap_selct[i];
+      itm.t_out_start=itm.r_time;
+      assert(itm.r_time==vec_run[itm.r_idx].t);
+      if(i) itm.t_out_start=max(vec_swap_selct[i-1].t_out_end,itm.r_time);
+      itm.idx_out_start=itm.r_idx;
+      itm.t_out_end = itm.t_out_start + SwapOutTime(itm.size);
+      for (int j = 0; j<vec_run.size()&&vec_run[j].t<itm.t_out_end; ++j,itm.idx_out_end=j){}
+      vec_swap_selct[i] = itm;
+    }
+
     sort(vec_swap_selct.begin(),vec_swap_selct.end(),sort_by_idx_descending_swap());
     for (int i =0; i<vec_swap_selct.size(); i++){
       auto itm = vec_swap_selct[i];
-      int need_idx = itm.d_idx;
-      if (i > 0){ need_idx = std::min(need_idx,vec_swap_selct[i-1].idx_in_start); }
-      itm.idx_in_end = need_idx;
-      double prepareTime = vec_run[need_idx].t - SwapInTime(itm.size);
-      while (prepareTime < vec_run[need_idx].t)need_idx--;
-      itm.idx_in_start = need_idx;
-      itm.t_in_start = prepareTime;
-
-      itm.idx_out_start=itm.r_idx;//idx out queue
-
+      itm.t_in_end=itm.d_time;
+      assert(vec_run[itm.d_idx].t==itm.d_time);
+      if(i) itm.t_in_end=min(vec_swap_selct[i-1].t_in_start,itm.d_time);
+      itm.t_in_start = itm.t_in_end - SwapInTime(itm.size);
+      for (int j = vec_run.size()-1; j>0&&vec_run[j].t>itm.t_in_end; --j,itm.idx_in_end=j){}
+      for (int j = vec_run.size()-1; j>0&&vec_run[j].t>itm.t_in_start; --j,itm.idx_in_start=j){}
       vec_swap_selct[i] = itm;
     }
   }
@@ -329,10 +337,12 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
   for (int i =0; i<vec_swap_selct.size(); i++){
 
     auto itm = vec_swap_selct[i];
-    cout << "item r_idx:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
-    cout << "item d_idx:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
+    cout << "item idx out:" << itm.idx_out_start << "," << itm.idx_out_end << endl;
+    cout << "item idx in:" << itm.idx_in_start << "," << itm.idx_in_end << endl;
+    cout << "item r_idx:" << itm.r_idx << endl;
+    cout << "item d_idx:" << itm.d_idx << endl;
     table_sched[0][itm.idx_out_start].push_back(itm.r_idx);
-    if(mode_type!=2)table_sched[1][itm.idx_out_end].push_back(itm.r_idx);
+    table_sched[1][itm.idx_out_end].push_back(itm.r_idx);
     table_sched[2][itm.idx_in_start].push_back(itm.r_idx);
     table_sched[3][itm.idx_in_end].push_back(itm.r_idx);
 
@@ -340,14 +350,12 @@ void SwapGPU::BuildMetaTables(vector<SwapBlock>vec_swap_selct){
     void* temp_ptr = nullptr;
     cudaMallocHost(&temp_ptr,itm.size); //pinned memory.
     BlockMeta meta;
+    cudaEventCreate (&meta.in_event);
+    cudaEventCreate (&meta.out_event);
     meta.size = itm.size;
     meta.cpu_ptr = temp_ptr;
     meta.out_stream = stream1;
-    //meta.out_stream = ctx_.stream;
     meta.in_stream = stream2;
-    //meta.in_stream = ctx_.stream;
-    //todo: even use ctx_.stream, still same time, no overlap at all
-    //todo: change in out stream all to stream1
     meta.vis=true;
     table_meta[itm.r_idx] = meta;
 
@@ -525,7 +533,6 @@ void SwapGPU::SwapOut(const int idx){
   cout << "swapout" << endl;
   long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   BlockMeta meta = table_meta[idx];
-  if(syncfactor) cudaEventCreate (&meta.out_event);
   if(meta.block_->get_data() == nullptr)cout << "swapout() should not have nullptr" << endl;
   cudaError_t err = cudaMemcpyAsync(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost,meta.out_stream);
   //cudaError_t err = cudaMemcpy(meta.cpu_ptr,meta.block_->get_data(),meta.size,cudaMemcpyDeviceToHost);
@@ -541,7 +548,6 @@ void SwapGPU::SwapIn(const int idx){
   cout << "swapin" << endl;
   long long now0 = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   BlockMeta meta = table_meta[idx];
-  if(syncfactor)cudaEventCreate (&meta.in_event);
   void* ptr = nullptr;
   pool_->Malloc((void**)&ptr, meta.size);
   meta.block_->update_data(ptr);
@@ -579,16 +585,19 @@ void SwapGPU::SwapOutSyn(const int idx){
     deploytime+=(now1-now0);
 }
 void SwapGPU::DeploySwapOut(int r_global_index){
-  for(int i = 0;i < table_sched[0][r_global_index].size();i++)
-        SwapOut(table_sched[0][r_global_index][i]);
+    //syn first since event record will overwrite previous one
   for(int i = 0;i < table_sched[1][r_global_index].size();i++)
         SwapOutSyn(table_sched[1][r_global_index][i]);
+  for(int i = 0;i < table_sched[0][r_global_index].size();i++)
+        SwapOut(table_sched[0][r_global_index][i]);
+
 }
 void SwapGPU::DeploySwapIn(int r_global_index){
-  for(int i = 0;i < table_sched[2][r_global_index].size();i++)
-        SwapIn(table_sched[2][r_global_index][i]);
   for(int i = 0;i < table_sched[3][r_global_index].size();i++)
         SwapInSyn(table_sched[3][r_global_index][i]);
+  for(int i = 0;i < table_sched[2][r_global_index].size();i++)
+        SwapIn(table_sched[2][r_global_index][i]);
+
 }
 
 void SwapGPU::Append(InfoBlock b){
@@ -635,6 +644,7 @@ SwapGPU::~SwapGPU() {
         outfile << vecBlock[i].operation_type << "," <<vecBlock[i].ptr << "," << vecBlock[i].size<<"," << (long long)vecBlock[i].t<<"\n";
     outfile.close();
     int iter2=location_of_2nd_iteration;
+    cout << "iterlen:"<< iterlen << endl;
     cout << "iteration time duration"<<endl;
     cout << "vecblock size:" << vecBlock.size() << endl;
     for(int i = 0;i < 20;i++){
