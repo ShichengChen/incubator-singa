@@ -1,4 +1,4 @@
-88290129 2 0 0
+88290129 2 4 0
 1
 0
 resnetswap
@@ -21,4 +21,11 @@ resnetswap
 vgg
 save %21 memory use %2% extra computation time
 
+unet
+save %35.5 memory use %10 extra computation time
+save %20 memory use %1 extra computation time
+
+resnet
+save %20 memory use %2.8 extra computation %time
+save %27 memory use %8.6 extra computation %time
 
