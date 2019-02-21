@@ -22,6 +22,7 @@ from singa.proto import core_pb2
 
 #import resnet3 as resnet
 import vgg3 as vgg
+import dynamicResnet as dresnet
 #import resnet3 as resnet
 import resnet
 import unet
@@ -29,7 +30,7 @@ import unet
 from datetime import datetime
 import time
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 def load_dataset(filepath):
     print('Loading data file %s' % filepath)
     with open(filepath, 'rb') as fd:
@@ -188,7 +189,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train dcnn for cifar10')
-    parser.add_argument('model', choices=['vgg', 'alexnet', 'resnet', 'caffe','unet'],
+    parser.add_argument('model', choices=['vgg', 'alexnet', 'resnet', 'caffe','unet','dresnet'],
                         default='alexnet')
     parser.add_argument('data', default='cifar-10-batches-py')
     parser.add_argument('--use_cpu', action='store_true')
@@ -226,7 +227,14 @@ if __name__ == '__main__':
         net = unet.create_net(args.use_cpu)
         train((train_x, train_y, test_x, test_y), net, 250, vgg_lr, 0.0005,
               use_cpu=args.use_cpu,batch_size=args.batch_size)
-    else:
+    elif args.model == 'dresnet':
+        train_x, test_x = normalize_for_alexnet(train_x, test_x)
+        depth = args.depth
+        #net = resnet.create_net(depth,args.use_cpu)
+        net = dresnet.create_net(args.use_cpu)
+        train((train_x, train_y, test_x, test_y), net, 200, resnet_lr, 1e-4,
+              use_cpu=args.use_cpu,batch_size=args.batch_size)
+    elif args.model == 'resnet':
         train_x, test_x = normalize_for_alexnet(train_x, test_x)
         depth = args.depth
         #net = resnet.create_net(depth,args.use_cpu)

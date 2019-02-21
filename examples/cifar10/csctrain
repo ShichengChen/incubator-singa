@@ -1,1 +1,1 @@
-python train3.py resnet cifar-10-batches-py 100 11
+python train3.py dresnet cifar-10-batches-py 100 11

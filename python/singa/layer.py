@@ -55,6 +55,8 @@ from builtins import set
 from . import singa_wrap
 from .proto import model_pb2
 from . import tensor
+import numpy as np
+import time
 
 engine = 'cudnn'
 '''engine is the prefix of layer identifier.
@@ -300,7 +302,6 @@ class Dummy(Layer):
         '''Return dy, []'''
         return dy, []
 
-
 class Conv2D(Layer):
     """Construct a layer for 2D convolution.
 
@@ -389,6 +390,35 @@ class Conv2D(Layer):
                                in_shape)
         self.layer.Setup(list(in_shape), self.conf.SerializeToString())
         self.has_setup = True
+
+
+class DynamicConv2D(Conv2D):
+
+    def __init__(self, name, nb_kernels, kernel=3, stride=1, border_mode='same',
+                 cudnn_prefer='fastest', workspace_byte_limit=1024,
+                 data_format='NCHW', use_bias=True, W_specs=None, b_specs=None,
+                 pad=None, input_sample_shape=None):
+        super(DynamicConv2D, self).__init__(name, nb_kernels, kernel, stride, border_mode,
+                                     cudnn_prefer, workspace_byte_limit,
+                                     data_format, use_bias, W_specs, b_specs,
+                                     pad, input_sample_shape)
+        self.keep = np.random.uniform(0,1)
+    def forward(self, flag, x):
+        #np.random.seed(int(time.time()))
+        self.keep = np.random.uniform(0,1)
+        #print(self.keep)
+        #return super(Conv2D,self).forward(flag, x)
+        if(self.keep > 0.5):return super(Conv2D,self).forward(flag, x)
+        else:
+            #print("jump")
+            return x
+    def backward(self, flag, dy):
+        #return super(Conv2D,self).backward(flag, dy)
+        if(self.keep > 0.5):return super(Conv2D,self).backward(flag, dy)
+        else:
+            #print("jump")
+            return [dy],[]
+
 
 
 class Conv1D(Conv2D):
@@ -856,6 +886,56 @@ class Merge(Layer):
         assert isinstance(grad, tensor.Tensor), 'The input must be Tensor' \
             ' instead of %s' % type(grad).__name__
         return [grad] * self.num_input, []  # * self.num_input
+
+
+
+class MergeDynamic(Layer):
+    def __init__(self, name, input_sample_shape=None):
+        self.in_shape = input_sample_shape
+        self.num_input = 1
+        self.keep=np.random.uniform(0,1)
+        super(MergeDynamic, self).__init__(name)
+
+    def setup(self, in_shape):
+        self.in_shape = in_shape
+        self.has_setup = True
+
+    def get_output_sample_shape(self):
+        return self.in_shape
+
+    def forward(self, flag, inputs):
+        #np.random.seed(int(time.time()))
+        self.keep=np.random.uniform(0,1)
+        assert len(inputs) == 2, 'There must be multiple input tensors'
+        self.num_input = len(inputs)
+        output = tensor.Tensor()
+        output.reset_like(inputs[0])
+        output.set_value(0)
+        if(self.keep>0.5):
+            for x in inputs:output += x
+        else:
+            output = inputs[0]
+        return output
+
+    def backward(self, flag, grad):
+        '''Replicate the grad for each input source layer.
+
+        Args:
+            grad(Tensor), the gradient tensor of the merged result from forward
+
+        Returns:
+            A list of replicated grad, one per source layer
+        '''
+        assert isinstance(grad, tensor.Tensor), 'The input must be Tensor' \
+                                                ' instead of %s' % type(grad).__name__
+        if(self.keep>0.5):
+            return [grad] * self.num_input, []  # * self.num_input
+        else:
+            output = tensor.Tensor()
+            output.reset_like(grad)
+            output.set_value(0)
+            return [grad,output], []
+
 
 
 class Split(Layer):

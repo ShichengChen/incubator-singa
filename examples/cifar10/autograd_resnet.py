@@ -28,7 +28,7 @@ import time
 import numpy as np
 from tqdm import trange
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
@@ -119,7 +119,7 @@ class ResNet(autograd.Layer):
 
     def __init__(self, block, layers, num_classes=10):
         super(ResNet, self).__init__()
-        inp=16
+        inp=8
         self.conv1 = autograd.Conv2d(3, inp, kernel_size=3, stride=1, padding=1)
         self.bn1 = autograd.BatchNorm2d(inp)
         self.layer1 = self._make_layer( inp,inp, layers[0])
@@ -226,7 +226,6 @@ if __name__ == '__main__':
     print('Start intialization............')
     #dev = device.create_cuda_gpu_on()
     dev = device.create_cuda_gpu()
-    niters = 200
     niters = 13
     batch_size = 200
     IMG_SIZE = 32
@@ -239,7 +238,6 @@ if __name__ == '__main__':
     train_y = np.random.randint(0, 10, batch_size*batch_size, dtype=np.int32)
     idx = np.arange(train_x.shape[0], dtype=np.int32)
     for i in np.arange(niters):
-        time.sleep(1)
         np.random.shuffle(idx)
         x = train_x[idx[i * batch_size: (i + 1) * batch_size]]
         y = train_y[idx[i * batch_size: (i + 1) * batch_size]]
