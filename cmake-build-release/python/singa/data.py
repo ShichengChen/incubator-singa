@@ -1,0 +1,1 @@
+/home/csc/opertor/incubator-singa/python/singa/data.py
