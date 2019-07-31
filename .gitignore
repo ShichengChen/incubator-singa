@@ -13,3 +13,6 @@ thirdparty/*
 !thirdparty/install.sh
 test/samples/
 .idea
+cmake/
+cmake-build-debug/
+cmake-build-release/
