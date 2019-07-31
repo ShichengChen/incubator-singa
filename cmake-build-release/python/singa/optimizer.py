@@ -1,1 +1,0 @@
-/home/csc/opertor/incubator-singa/python/singa/optimizer.py
