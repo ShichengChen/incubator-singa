@@ -30,7 +30,6 @@ except ImportError:
 import numpy as np
 import os
 import argparse
-from tqdm import trange
 
 from singa import utils
 from singa import optimizer
@@ -39,9 +38,10 @@ from singa import tensor
 from caffe import caffe_net
 
 import cnn
-import vgg
+import vgg3
 import resnet
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 def load_dataset(filepath):
     print('Loading data file %s' % filepath)
@@ -139,33 +139,32 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
 
     tx = tensor.Tensor((batch_size, 3, 32, 32), dev)
     ty = tensor.Tensor((batch_size,), dev, tensor.int32)
+
     train_x, train_y, test_x, test_y = data
     num_train_batch = train_x.shape[0] // batch_size
     num_test_batch = test_x.shape[0] // batch_size
     idx = np.arange(train_x.shape[0], dtype=np.int32)
-    for epoch in range(max_epoch):
+    for epoch in range(1):
         np.random.shuffle(idx)
         loss, acc = 0.0, 0.0
-        with trange(num_train_batch) as t:
-            t.set_description('Epoch={}'.format(epoch))
-            for b in t:
-                x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
-                y = train_y[idx[b * batch_size: (b + 1) * batch_size]]
-                tx.copy_from_numpy(x)
-                ty.copy_from_numpy(y)
-                grads, (l, a) = net.train(tx, ty)
-                loss += l
-                acc += a
-                for (s, p, g) in zip(net.param_names(), net.param_values(), grads):
-                    opt.apply_with_lr(epoch, get_lr(epoch), g, p, str(s), b)
-                t.set_postfix(loss=l, accuracy=a)
+        for i in range(16):
+            print(i,'iteration')
+            x = train_x[idx[i * batch_size: (i + 1) * batch_size]]
+            y = train_y[idx[i * batch_size: (i + 1) * batch_size]]
+            tx.copy_from_numpy(x)
+            ty.copy_from_numpy(y)
+            grads, (l, a) = net.train(tx, ty)
+            loss += l
+            acc += a
+            for (s, p, g) in zip(net.param_names(), net.param_values(), grads):
+                opt.apply_with_lr(epoch, get_lr(epoch), g, p, str(s), i)
 
         info = 'Training loss = %f, training accuracy = %f, lr = %f' \
             % ((loss / num_train_batch), (acc / num_train_batch), get_lr(epoch))
         print(info)
 
         loss, acc = 0.0, 0.0
-        for b in range(num_test_batch):
+        for b in range(0):
             x = test_x[b * batch_size: (b + 1) * batch_size]
             y = test_y[b * batch_size: (b + 1) * batch_size]
             tx.copy_from_numpy(x)
@@ -206,11 +205,12 @@ if __name__ == '__main__':
               use_cpu=args.use_cpu)
     elif args.model == 'vgg':
         train_x, test_x = normalize_for_vgg(train_x, test_x)
-        net = vgg.create_net(args.use_cpu)
-        train((train_x, train_y, test_x, test_y), net, 250, vgg_lr, 0.0005,
-              use_cpu=args.use_cpu)
+        net = vgg3.create_net(11,args.use_cpu)
+        train((train_x, train_y, test_x, test_y), net, 250, vgg_lr, 0.0005
+              ,batch_size=100)
+
     else:
         train_x, test_x = normalize_for_alexnet(train_x, test_x)
         net = resnet.create_net(args.use_cpu)
-        train((train_x, train_y, test_x, test_y), net, 200, resnet_lr, 1e-4,
+        train((train_x, train_y, test_x, test_y), net, 100, resnet_lr, 1e-4,
               use_cpu=args.use_cpu)

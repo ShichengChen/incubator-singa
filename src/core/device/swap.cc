@@ -601,7 +601,7 @@ namespace singa {
         std::ofstream outfile;
         outfile.open(outputfile);
         for(int i = 0;i < (int)vecBlock.size();i++)
-            outfile << vecBlock[i].operation_type << "," <<vecBlock[i].ptr << "," << vecBlock[i].size<<"," << (LL)vecBlock[i].t << "," << vecBlock[i].execCnt<< "," << vecBlock[i].recompute <<"\n";
+            outfile << vecBlock[i].operation_type << "," <<vecBlock[i].ptr << "," << vecBlock[i].size<<"," << (LL)vecBlock[i].t << "," << vecBlock[i].execCnt<< "\n";
         outfile.close();
         cout << "iterlen:"<< iterlen << endl;
         cout << "iter2:"<< iter2 << endl;

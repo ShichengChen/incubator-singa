@@ -1,0 +1,52 @@
+{
+"mem_limit_ratio":0.6
+#mem_limit ratio of original memory load = a;
+"number_of_swap_blocks":0
+#number of all swap blocks=c;
+"pooltype":1
+#pooltype=d;0->CnMemPool,1->CudaMemPool,2->CscPool,3->TreePool
+"fixordy":0
+#fix swap=0 or dynamic swap=1
+"syncfactor":1
+#syncfactor open or not, 1 open, 0 not
+"rfornot":0
+#read from file or not
+"iterlen_threshold":1000
+#iterlen threshold
+"DEBUG":1
+#cout swap in and out or not?
+"justrun":0
+#just run or not, not swap or recompute at all
+"openremovedirect":0
+#remove directly number
+"remove_limit":21
+#For variables, if the first operation is reading or writing, and the second operation is writing or free, I will remove it and malloc it again instead of swap. The variables should bigger than (1<<21). remove_limit=21
+"recompute":0
+#recompute or not
+"recomputetype":2
+#relu=1 or batchnorm=2 or relu+bn=3 or conv=4 or bn+conv=6 or all=7
+"setmaxRNum":1000
+#setmaxRNum,max recompute number.
+"Refile":0
+#Refile read from file
+"faketrain":0
+#fake train number of iterations, fake training means that remove blocks after using, when use the removed blocks, malloc new variables with same shape.
+"beginremove":2500
+#begin to fake train
+"delayremove":20
+#delay for fake train
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

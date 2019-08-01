@@ -31,13 +31,13 @@ void Device::Exec(function<void(Context*)>&& fn, const vector<Block*> read_block
     for(auto it = read_blocks.begin(); it != read_blocks.end() && (*it) != 0; it++){
         //read blocks
         long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        Append(InfoBlock(*it,(int)(*it)->size(),2,-1,now,execnt,0));
+        Append(InfoBlock(*it,(int)(*it)->size(),READ,-1,now,execnt));
     }
     DoExec(std::move(fn), 0);
     for(auto it = write_blocks.begin(); it != write_blocks.end() && (*it) != 0; it++){
         //write blocks
         long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        Append(InfoBlock(*it,(int)(*it)->size(),4,-1,now,execnt,0));
+        Append(InfoBlock(*it,(int)(*it)->size(),WRITE,-1,now,execnt));
     }
 
     execnt++;
@@ -51,7 +51,7 @@ void Device::Exec(function<void(Context*)>&& fn, const vector<Block*> read_block
             void* ptr = Malloc(size);
             auto newblock = new Block(ptr, (size_t)size,0,this);
             long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-            Append(InfoBlock(newblock,size,1,-1,now,-1));
+            Append(InfoBlock(newblock,size,MALLOC,-1,now,-1));
             return newblock;
         } else {
             return nullptr;
@@ -67,12 +67,12 @@ void Device::Exec(function<void(Context*)>&& fn, const vector<Block*> read_block
         if (block != nullptr) {
             long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             if(block->data_ptr()== nullptr){
-                Append(InfoBlock(block,(int)block->size(),-1,-1,now,-1));
+                Append(InfoBlock(block,(int)block->size(),FREE,-1,now,-1));
                 delete block;
             }
             else{
                 auto cptr = block->mutable_data();
-                Append(InfoBlock(block,(int)block->size(),-1,-1,now,-1));
+                Append(InfoBlock(block,(int)block->size(),FREE,-1,now,-1));
                 Free(cptr);
                 delete block;
             }

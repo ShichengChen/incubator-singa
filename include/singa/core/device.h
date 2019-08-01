@@ -59,12 +59,9 @@ namespace singa {
         int idx;
         LL t;
         int execCnt;
-        int recompute;
-        int noswap;
         bool fake=false;
-        InfoBlock(Block* p, size_t s, int op, int i,LL tt,int cnt,int re=0,int np=0,bool f=false)
-                :ptr(p),size(s),operation_type(op),idx(i),t(tt),execCnt(cnt),
-                 recompute(re),noswap(np),fake(f){}
+        InfoBlock(Block* p, size_t s, int op, int i,LL tt,int cnt,bool f=false)
+                :ptr(p),size(s),operation_type(op),idx(i),t(tt),execCnt(cnt),fake(f){}
         bool operator == (const InfoBlock& rhs) const {
             return size == rhs.size && operation_type == rhs.operation_type;// && ptr == rhs.ptr;
         }
@@ -133,7 +130,7 @@ class Device {
   }
 
   int id() const { return id_; }
-    virtual void Append(InfoBlock b){cout << "not implement append" << endl;};
+    virtual void Append(InfoBlock b)=0;
 
  private:
   Device() {};
@@ -386,7 +383,7 @@ class Device {
         int Refile=0;
         int overlapcr = 0;
         int lastrecompute=1;
-        int iterlen_threshold = 1500;
+        int iterlen_threshold = 1000;
         int DEBUG;
         LL maxnoswapload=0;
         LL maxswapload=0;
@@ -426,6 +423,7 @@ class CppCPU : public Device {
 
   /// Free cpu memory.
   void Free(void* ptr) override;
+    void Append(InfoBlock b) override{};
 };
 
 
@@ -456,6 +454,7 @@ class CudaGPU : public Device {
 
   /// Free cpu memory.
   void Free(void* ptr) override;
+  void Append(InfoBlock b) override{};
 
  private:
   void Setup();
@@ -516,6 +515,7 @@ protected:
   /// Converts the void pointer into a Buffer object, then deletes the object.
   /// This has the effect of freeing up device memory.
   void Free(void* ptr) override;
+  void Append(InfoBlock b) override{};
 
 private:
 
