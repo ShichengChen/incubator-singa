@@ -26,31 +26,59 @@ Device::Device(int id, int num_executors)
 }
 
 void Device::Exec(function<void(Context*)>&& fn, const vector<Block*> read_blocks,
-                    const vector<Block*> write_blocks, bool use_rand_generator) {
-  // TODO(wangwei) execute operations scheduled by the scheduler.
-  DoExec(std::move(fn), 0);
+                  const vector<Block*> write_blocks, bool use_rand_generator){
+    // TODO(wangwei) execute operations scheduled by the scheduler.
+    for(auto it = read_blocks.begin(); it != read_blocks.end() && (*it) != 0; it++){
+        //read blocks
+        long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        Append(InfoBlock(*it,(int)(*it)->size(),2,-1,now,execnt,0));
+    }
+    DoExec(std::move(fn), 0);
+    for(auto it = write_blocks.begin(); it != write_blocks.end() && (*it) != 0; it++){
+        //write blocks
+        long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        Append(InfoBlock(*it,(int)(*it)->size(),4,-1,now,execnt,0));
+    }
+
+    execnt++;
 }
 
 // TODO(wangwei) get Block from the memory manager
-Block* Device::NewBlock(int size) {
-  CHECK_GE(size, 0) << "size is negative, could be caused by the type cast "
-    << "from size_t to int. In that case, the size is too large.";
-  if (size > 0) {
-    void* ptr = Malloc(size);
-    return new Block(ptr, size);
-  } else {
-    return nullptr;
-  }
-}
+    Block* Device::NewBlock(int size) {
+        CHECK_GE(size, 0) << "size is negative, could be caused by the type cast "
+                          << "from size_t to int. In that case, the size is too large.";
+        if (size > 0) {
+            void* ptr = Malloc(size);
+            auto newblock = new Block(ptr, (size_t)size,0,this);
+            long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            Append(InfoBlock(newblock,size,1,-1,now,-1));
+            return newblock;
+        } else {
+            return nullptr;
+        }
+    }
+    void Device::AppendInfo(Block* block,int type){
+        LL now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        Append(InfoBlock(block,(int)block->size(),type,-1,now,-1));
+    }
 
 // TODO(wangwei) return Block to the memory manager
-void Device::FreeBlock(Block* block) {
-  if (block != nullptr) {
-    Free(block->mutable_data());
-    delete block;
-  }
-}
+    void Device::FreeBlock(Block* block) {
+        if (block != nullptr) {
+            long long now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            if(block->data_ptr()== nullptr){
+                Append(InfoBlock(block,(int)block->size(),-1,-1,now,-1));
+                delete block;
+            }
+            else{
+                auto cptr = block->mutable_data();
+                Append(InfoBlock(block,(int)block->size(),-1,-1,now,-1));
+                Free(cptr);
+                delete block;
+            }
 
+        }
+    }
 void Device::CopyDataToFrom(Block* dst, Block* src, size_t nBytes,
                             CopyDirection direct, int dst_offset,
                             int src_offset) {

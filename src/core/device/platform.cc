@@ -20,129 +20,173 @@
 #include "singa/core/device.h"
 #include "singa/singa_config.h"
 #include "singa/utils/opencl_utils.h"
+#include <sstream>
+#include <string>
+#include <fstream>
+#include <assert.h>
+
 
 namespace singa {
 
-#ifdef USE_CUDA
+//#ifdef USE_CUDA
 
-int Platform::GetNumGPUs() {
-  int count;
-  CUDA_CHECK(cudaGetDeviceCount(&count));
-  return count;
-}
+    int Platform::GetNumGPUs() {
+        int count;
+        CUDA_CHECK(cudaGetDeviceCount(&count));
+        return count;
+    }
 
-bool Platform::CheckDevice(const int device_id) {
-  bool r = ((cudaSuccess == cudaSetDevice(device_id)) &&
-            (cudaSuccess == cudaFree(0)));
-  // reset any error that may have occurred.
-  cudaGetLastError();
-  return r;
-}
+    bool Platform::CheckDevice(const int device_id) {
+        bool r = ((cudaSuccess == cudaSetDevice(device_id)) &&
+                  (cudaSuccess == cudaFree(0)));
+        // reset any error that may have occurred.
+        cudaGetLastError();
+        return r;
+    }
 
 /// Return the total num of free GPUs
-const vector<int> Platform::GetGPUIDs() {
-  vector<int> gpus;
-  int count = Platform::GetNumGPUs();
-  for (int i = 0; i < count; i++) {
-    if (Platform::CheckDevice(i)) {
-      gpus.push_back(i);
+    const vector<int> Platform::GetGPUIDs() {
+        vector<int> gpus;
+        int count = Platform::GetNumGPUs();
+        for (int i = 0; i < count; i++) {
+            if (Platform::CheckDevice(i)) {
+                gpus.push_back(i);
+            }
+        }
+        return gpus;
     }
-  }
-  return gpus;
-}
 
-const std::pair<size_t, size_t> Platform::GetGPUMemSize(const int device) {
-  std::pair<size_t, size_t> ret{ 0, 0 };
-  if (Platform::CheckDevice(device)) {
-    CUDA_CHECK(cudaSetDevice(device));
-    size_t free = 0, total = 0;
-    CUDA_CHECK(cudaMemGetInfo(&free, &total));
-    ret = std::make_pair(free, total);
-  } else {
-    LOG(ERROR) << "The device (ID = " << device << ") is not available";
-  }
-  return ret;
-}
+    const std::pair<size_t, size_t> Platform::GetGPUMemSize(const int device) {
+        std::pair<size_t, size_t> ret{ 0, 0 };
+        if (Platform::CheckDevice(device)) {
+            CUDA_CHECK(cudaSetDevice(device));
+            size_t free = 0, total = 0;
+            CUDA_CHECK(cudaMemGetInfo(&free, &total));
+            ret = std::make_pair(free, total);
+        } else {
+            LOG(ERROR) << "The device (ID = " << device << ") is not available";
+        }
+        return ret;
+    }
 
-const vector<std::pair<size_t, size_t>> Platform::GetGPUMemSize() {
-  vector<std::pair<size_t, size_t>> mem;
-  int count = Platform::GetNumGPUs();
-  for (int i = 0; i < count; i++) {
-    mem.push_back(Platform::GetGPUMemSize(i));
-  }
-  return mem;
-}
+    const vector<std::pair<size_t, size_t>> Platform::GetGPUMemSize() {
+        vector<std::pair<size_t, size_t>> mem;
+        int count = Platform::GetNumGPUs();
+        for (int i = 0; i < count; i++) {
+            mem.push_back(Platform::GetGPUMemSize(i));
+        }
+        return mem;
+    }
 
-const string Platform::DeviceQuery(int device, bool verbose) {
-  if (cudaSuccess != cudaGetDevice(&device)) {
-    return "The device (ID = " + std::to_string(device) + " is not available" ;
-  }
-  cudaDeviceProp prop;
-  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
-  std::ostringstream out;
-  out << "Device id:                     " << device << '\n';
-  out << "Total global memory:           " << prop.totalGlobalMem << '\n';
-  out << "Total shared memory per block: " << prop.sharedMemPerBlock
-      << '\n';
-  out << "Maximum threads per block:     " << prop.maxThreadsPerBlock
-      << '\n';
-  out << "Maximum dimension of block:    "
-      << prop.maxThreadsDim[0 << '\n'] << ", " << prop.maxThreadsDim[1]
-      << ", " << prop.maxThreadsDim[2] << '\n';
-  out << "Maximum dimension of grid:     " << prop.maxGridSize[0] << ", "
-      << "Concurrent copy and execution: "
-      << (prop.deviceOverlap ? "Yes" : "No") << '\n';
+    const string Platform::DeviceQuery(int device, bool verbose) {
+        if (cudaSuccess != cudaGetDevice(&device)) {
+            return "The device (ID = " + std::to_string(device) + " is not available" ;
+        }
+        cudaDeviceProp prop;
+        CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+        std::ostringstream out;
+        out << "Device id:                     " << device << '\n';
+        out << "Total global memory:           " << prop.totalGlobalMem << '\n';
+        out << "Total shared memory per block: " << prop.sharedMemPerBlock
+            << '\n';
+        out << "Maximum threads per block:     " << prop.maxThreadsPerBlock
+            << '\n';
+        out << "Maximum dimension of block:    "
+            << prop.maxThreadsDim[0 << '\n'] << ", " << prop.maxThreadsDim[1]
+            << ", " << prop.maxThreadsDim[2] << '\n';
+        out << "Maximum dimension of grid:     " << prop.maxGridSize[0] << ", "
+            << "Concurrent copy and execution: "
+            << (prop.deviceOverlap ? "Yes" : "No") << '\n';
 
-  if (verbose) {
-    out << "Major revision number:         " << prop.major << '\n';
-    out << "Minor revision number:         " << prop.minor << '\n';
-    out << "Name:                          " << prop.name << '\n';
-    out << "Total registers per block:     " << prop.regsPerBlock << '\n';
-    out << "Maximum memory pitch:          " << prop.memPitch << '\n';
-    out << "Warp size:                     " << prop.warpSize
-      << prop.maxGridSize[1] << ", " << prop.maxGridSize[2] << '\n';
-    out << "Clock rate:                    " << prop.clockRate << '\n';
-    out << "Number of multiprocessors:     " << prop.multiProcessorCount
-        << '\n';
-    out << "Kernel execution timeout:      "
-        << (prop.kernelExecTimeoutEnabled ? "Yes" : "No") << '\n';
-  }
-  return out.str();
-}
+        if (verbose) {
+            out << "Major revision number:         " << prop.major << '\n';
+            out << "Minor revision number:         " << prop.minor << '\n';
+            out << "Name:                          " << prop.name << '\n';
+            out << "Total registers per block:     " << prop.regsPerBlock << '\n';
+            out << "Maximum memory pitch:          " << prop.memPitch << '\n';
+            out << "Warp size:                     " << prop.warpSize
+                << prop.maxGridSize[1] << ", " << prop.maxGridSize[2] << '\n';
+            out << "Clock rate:                    " << prop.clockRate << '\n';
+            out << "Number of multiprocessors:     " << prop.multiProcessorCount
+                << '\n';
+            out << "Kernel execution timeout:      "
+                << (prop.kernelExecTimeoutEnabled ? "Yes" : "No") << '\n';
+        }
+        return out.str();
+    }
 
-const vector<shared_ptr<Device>>
-Platform::CreateCudaGPUs(const size_t num_devices, size_t init_size) {
-  const vector<int> gpus = GetGPUIDs();
-  CHECK_LE(num_devices, gpus.size());
-  vector<int> use_gpus(gpus.begin(), gpus.begin() + num_devices);
-  return CreateCudaGPUsOn(use_gpus, init_size);
-}
+    const vector<shared_ptr<Device>>
+    Platform::CreateCudaGPUs(const size_t num_devices, size_t init_size) {
+        const vector<int> gpus = GetGPUIDs();
+        CHECK_LE(num_devices, gpus.size());
+        vector<int> use_gpus(gpus.begin(), gpus.begin() + num_devices);
+        return CreateCudaGPUsOn(use_gpus, init_size);
+    }
 
-const vector<shared_ptr<Device>>
-Platform::CreateCudaGPUsOn(const vector<int> &devices, size_t init_size) {
-  MemPoolConf conf;
-  if (init_size > 0)
-    conf.set_init_size(init_size);
-  size_t bytes = conf.init_size() << 20;
-  for (auto device : devices) {
-    conf.add_device(device);
-    CHECK_LE(bytes, Platform::GetGPUMemSize(device).first);
-  }
-  auto pool = std::make_shared<CnMemPool>(conf);
+    const vector<shared_ptr<Device>>
+    Platform::CreateCudaGPUsOn(const vector<int> &devices, size_t init_size) {
+        MemPoolConf conf;
+        if (init_size > 0)
+            conf.set_init_size(init_size);
+        size_t bytes = conf.init_size() << 20;
+        for (auto device : devices) {
+            conf.add_device(device);
+            CHECK_LE(bytes, Platform::GetGPUMemSize(device).first);
+        }
 
-  vector<shared_ptr<Device> > ret;
-  for (auto device : devices) {
-    auto dev = std::make_shared<CudaGPU>(device, pool);
-    ret.push_back(dev);
-  }
-  return ret;
-}
 
-#endif  // USE_CUDA
+
+        int pooltype=2;
+        int fixordy=0;
+
+        {
+            ifstream infile("networkParameters");
+            assert(infile.is_open());
+            string s;
+            while(getline(infile,s)){
+                if(s[0]=='#' || s[0]=='{')continue;
+                if(s[0]=='}')break;
+                size_t pos = s.find(":");
+                std::istringstream iss(s.substr (pos+1));
+                if(s.compare(1,pos-2,"pooltype")==0)iss>>pooltype;
+                else if(s.compare(1,pos-2,"fixordy")==0)iss>>fixordy;
+            }
+            infile.close();
+        }
+
+
+        cout << "pooltype:" << pooltype << endl;
+        cout << "fixordy:" << fixordy << endl;
+
+        std::shared_ptr<CnMemPool> pool0 = std::make_shared<CnMemPool>(conf);
+        std::shared_ptr<CudaMemPool> pool1 = std::make_shared<CudaMemPool>();
+
+        //choose different memory pool and different swap method
+        //cnmem is nvidia memory pool
+        // cudamempool uses CUDA functions cudamalloc and cudafree
+        // cscpool: big variables use cnmem, small variables use cscpool
+        // treepool: just for test, remove memory influence on recomputation.
+        // SwapGPU: swap method for network with static computing graph
+        // SwapRand: swap method for network with dynamic computing graph
+
+        vector<shared_ptr<Device> > ret;
+        for (auto device : devices) {
+
+
+                std::shared_ptr<SwapGPU> dev;
+                if(pooltype==0)dev = std::make_shared<SwapGPU>(device, pool0);
+                else if(pooltype==1)dev = std::make_shared<SwapGPU>(device, pool1);
+                ret.push_back(dev);
+
+        }
+        return ret;
+    }
+
+//#endif  // USE_CUDA
 
 #ifdef USE_OPENCL
 
-const int Platform::GetNumOpenclPlatforms() {
+    const int Platform::GetNumOpenclPlatforms() {
   auto all_platforms = viennacl::ocl::get_platforms();
   return (int)all_platforms.size();
 }
