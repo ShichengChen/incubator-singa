@@ -28,28 +28,28 @@ using namespace std;
 namespace singa {
 
 
-    void* Block::get_data(){
-        if(data_== nullptr){
+void* Block::get_data(){
+  if(data_== nullptr){
 
-            data_ = ptr_device_->UpdateGpuPtr(this);
-        }
-        return static_cast<char*>(data_);
-    }
-    void* Block::mutable_data() {
-        initialized_ = true;
-        if(data_== nullptr){
-            data_ = ptr_device_->UpdateGpuPtr(this);
-        }
-        return static_cast<char*>(data_) + offset_;
-    }
-    const void* Block::data() const {
-        CHECK(initialized_) << "Must initialize data before reading it";
-        if(data_== nullptr){
-            void *ptr = const_cast<void*>(ptr_device_->UpdateGpuPtr(this));
-            data_=ptr;
-        }
-        return static_cast<char*>(data_) + offset_;
-    }
+    data_ = ptr_device_->UpdateGpuPtr(this);
+  }
+  return static_cast<char*>(data_);
+}
+void* Block::mutable_data() {
+  initialized_ = true;
+  if(data_== nullptr){
+    data_ = ptr_device_->UpdateGpuPtr(this);
+  }
+  return static_cast<char*>(data_) + offset_;
+}
+const void* Block::data() const {
+  CHECK(initialized_) << "Must initialize data before reading it";
+  if(data_== nullptr){
+    void *ptr = const_cast<void*>(ptr_device_->UpdateGpuPtr(this));
+    data_=ptr;
+  }
+  return static_cast<char*>(data_) + offset_;
+}
 
 }  // namespace singa
 

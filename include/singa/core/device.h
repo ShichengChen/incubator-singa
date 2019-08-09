@@ -51,21 +51,21 @@ using std::shared_ptr;
 typedef long long LL;
 using namespace std;
 namespace singa {
-    class Block;
-    struct InfoBlock{
-        Block* ptr;
-        size_t size;
-        int operation_type;
-        int idx;
-        LL t;
-        int execCnt;
-        bool fake=false;
-        InfoBlock(Block* p, size_t s, int op, int i,LL tt,int cnt,bool f=false)
-                :ptr(p),size(s),operation_type(op),idx(i),t(tt),execCnt(cnt),fake(f){}
-        bool operator == (const InfoBlock& rhs) const {
-            return size == rhs.size && operation_type == rhs.operation_type;// && ptr == rhs.ptr;
-        }
-    };
+class Block;
+struct InfoBlock{
+  Block* ptr;
+  size_t size;
+  int operation_type;
+  int idx;
+  LL t;
+  int execCnt;
+  bool fake=false;
+  InfoBlock(Block* p, size_t s, int op, int i,LL tt,int cnt,bool f=false)
+      :ptr(p),size(s),operation_type(op),idx(i),t(tt),execCnt(cnt),fake(f){}
+  bool operator == (const InfoBlock& rhs) const {
+    return size == rhs.size && operation_type == rhs.operation_type;// && ptr == rhs.ptr;
+  }
+};
 /// Allocate memory and execute Tensor operations.
 /// There are three types of devices distinguished by their programming
 /// languages, namely cpp, cuda and opencl.
@@ -84,7 +84,7 @@ class Device {
 
   /// Called by Tensor.
   void FreeBlock(Block* block);
-    void AppendInfo(Block* block,int type);
+  void AppendInfo(Block* block,int type);
   /// Return the size (bytes) of memory in use
   /// TODO(wangwei) override this function for all devices.
   virtual size_t GetAllocatedMem() {
@@ -102,14 +102,14 @@ class Device {
   void Exec(function<void(Context*)>&& fn, const vector<Block*> read_blocks,
                     const vector<Block*> write_blocks,
                     bool use_rand_generator = false);
-    virtual void* UpdateGpuPtr(const Block* block_ptr){
-        cout << "don't use device updateGpuPtr" << endl;
-        return nullptr;
-    }
-    virtual int Get_debug_status(){
-        cout << "should not use device get debug status" << endl;
-        return 0;
-    };
+  virtual void* UpdateGpuPtr(const Block* block_ptr){
+    cout << "don't use device updateGpuPtr" << endl;
+    return nullptr;
+  }
+  virtual int Get_debug_status(){
+    cout << "should not use device get debug status" << endl;
+    return 0;
+  };
 
   // Wait for one event.
   // void WaitFor();
@@ -164,241 +164,242 @@ class Device {
   // TODO(wangwei) define multiple contexts, one per executor
   Context ctx_;
 };
-    struct BlockMeta{
-        /*
-         meta of swapping memory blocks
-         */
-        bool vis = false;
-        bool out = false;
-        bool synin = false;
-        bool synout = false;
-        Block* block_ = nullptr;
-        void* data_ = nullptr;
-        void* cpu_ptr = nullptr;
-        int operation_type;
-        size_t size = 0;
-        cudaEvent_t out_event;
-        cudaEvent_t in_event;
-        cudaStream_t out_stream;
-        cudaStream_t in_stream;
-        //BlockMeta(bool v=false,bool o=false,bool si= false,bool so= false):
-        //vis(v),out(o),synout(so),synin(si){}
-    };
+struct BlockMeta{
+  /*
+   meta of swapping memory blocks
+   */
+  bool vis = false;
+  bool out = false;
+  bool synin = false;
+  bool synout = false;
+  Block* block_ = nullptr;
+  void* data_ = nullptr;
+  void* cpu_ptr = nullptr;
+  int operation_type;
+  size_t size = 0;
+  cudaEvent_t out_event;
+  cudaEvent_t in_event;
+  cudaStream_t out_stream;
+  cudaStream_t in_stream;
+  //BlockMeta(bool v=false,bool o=false,bool si= false,bool so= false):
+  //vis(v),out(o),synout(so),synin(si){}
+};
 
-    struct SwapBlock{
-        /*
-        meta of candidate blocks
-        */
-        Block* ptr;
-        string cat; //sub category of the candidate blocks, read-read, write-read, etc.
-        int name;
-        size_t size;
-        //index of last read/write before swap out, and first read/write after swap in
-        int r_idx; //out idx
-        int d_idx; //in idx
-        //index of last read/write before swap out, and first read/write after swap in
-        LL r_time; // out time
-        LL d_time; //in time
-        int r_idx_ready; //r_idx + buffer
-        int operation_type=0;
-        //below are index and time for scheduling
-        int idx_out_start  = 0;
-        int idx_out_end = 0;
-        int idx_in_end = 0;
-        int idx_in_start = 0;
-        LL t_out_start = 0;
-        LL t_out_end = 0;
-        LL t_in_end  = 0;
-        LL t_in_start = 0;
+struct SwapBlock{
+  /*
+  meta of candidate blocks
+  */
+  Block* ptr;
+  string cat; //sub category of the candidate blocks, read-read, write-read, etc.
+  int name;
+  size_t size;
+  //index of last read/write before swap out, and first read/write after swap in
+  int r_idx; //out idx
+  int d_idx; //in idx
+  //index of last read/write before swap out, and first read/write after swap in
+  LL r_time; // out time
+  LL d_time; //in time
+  int r_idx_ready; //r_idx + buffer
+  int operation_type=0;
+  //below are index and time for scheduling
+  int idx_out_start  = 0;
+  int idx_out_end = 0;
+  int idx_in_end = 0;
+  int idx_in_start = 0;
+  LL t_out_start = 0;
+  LL t_out_end = 0;
+  LL t_in_end  = 0;
+  LL t_in_start = 0;
 
-        SwapBlock(Block* p, size_t s, int idx_out_start, int idx_in_end, LL t_out_start, LL t_in_end):
-                ptr(p), size(s), r_idx(idx_out_start),d_idx(idx_in_end),r_time(t_out_start), d_time(t_in_end) {}
-    };
+  SwapBlock(Block* p, size_t s, int idx_out_start, int idx_in_end, LL t_out_start, LL t_in_end):
+      ptr(p), size(s), r_idx(idx_out_start),d_idx(idx_in_end),r_time(t_out_start), d_time(t_in_end) {}
+};
 /// Device able to Swap memory between Nvidia GPU and CPU
-    class SwapGPU : public Device {
-    public:
-        ~SwapGPU();
-        /// Construct the device using default mem pool setting.
-        SwapGPU(int id = 0);
-        /// Construct the device given the physical device ID and memory pool.
-        SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool);
+class SwapGPU : public Device {
+ public:
+  ~SwapGPU();
+  /// Construct the device using default mem pool setting.
+  SwapGPU(int id = 0);
+  /// Construct the device given the physical device ID and memory pool.
+  SwapGPU(int id, std::shared_ptr<DeviceMemPool> pool);
 
-        void SetRandSeed(unsigned seed) override;
-        size_t GetAllocatedMem() override;
-        int Get_debug_status() override{return DEBUG;};
-
-
-    protected:
-        void DoExec(function<void(Context*)>&& fn, int executor) override;
-
-        void CopyToFrom(void* dst, const void* src, size_t nBytes,
-                        CopyDirection direction, Context* ctx) override;
-
-        /// Allocate cpu memory.
-        void* Malloc(int size) override;
-
-        /// Free cpu memory.
-        void Free(void* ptr) override;
-
-        //Append at every index: free, read, mutable
-        void Append(InfoBlock b) override;
-
-        //append info after Malloc, as Block* is not available till Malloc() done.
-        void AppendAfterMalloc(Block* block,void* data_ptr,size_t size);
-
-        //Detection and Plan
-        void DetectionIteration();
+  void SetRandSeed(unsigned seed) override;
+  size_t GetAllocatedMem() override;
+  int Get_debug_status() override{return DEBUG;};
 
 
-        //entire plan, from SelectBlock() to Scheduling(), BuildMetaTables()
-        void Plan();
+ protected:
+  void DoExec(function<void(Context*)>&& fn, int executor) override;
 
-        //block selection algo
-        vector<SwapBlock> SelectBlock(vector<SwapBlock>&vec_swap,vector<LL> temp_load,LL mem_limit);
+  void CopyToFrom(void* dst, const void* src, size_t nBytes,
+                  CopyDirection direction, Context* ctx) override;
 
-        //schedule algo
-        void StickToLimit(vector<SwapBlock>&vec_swap_selct, vector<LL>&vec_load_temp,LL &overhead,LL mem_limit,string mode);
+  /// Allocate cpu memory.
+  void* Malloc(int size) override;
 
-        //make tables table_sched and table_meta
-        void BuildMetaTables(vector<SwapBlock>&vec_swap_selct);
+  /// Free cpu memory.
+  void Free(void* ptr) override;
 
-        //update table_meta, during Append()
-        void UpdateMetaTables(Block* block_ptr);
+  //Append at every index: free, read, mutable
+  void Append(InfoBlock b) override;
 
-        //swap/sync during Append()
-        void DeploySwap();
+  //append info after Malloc, as Block* is not available till Malloc() done.
+  void AppendAfterMalloc(Block* block,void* data_ptr,size_t size);
 
-        //exec DelpoySwap
-        void DeploySwapOut(int relative_counter);
-        void DeploySwapIn(int relative_counter);
-
-        //load profile as per synchronous swap.
-        vector<LL> GetIdealLoad(vector<LL>vec_load,vector<SwapBlock> vec_swap_selct);
-
-        //in case gpu ptr wrong, updated it after swap_in ad hoc
-        void* UpdateGpuPtr(const Block* block_ptr) override;
-
-        //Swap Synchronous, for early iterations
-        void SwapOutSynchronous(const Block* block_ptr);
-        void SwapInSynchronous(const Block* block_ptr);
-
-        //Swap asynchronous, for middle iteraions
-        void SwapOut(const int idx);
-        void SwapIn(const int idx);
-        void SwapOutSyn(const int idx);
-        void SwapInSyn(const int idx);
-        int shiftForConflict(int idx,int inc);
-
-        //LL update_accum(int i,LL accum,int neg);
-        //LL check_accum(int i,LL accum,int neg);
-        LL SwapOutTime(size_t size);
-        LL SwapInTime(size_t size);
+  //Detection and Plan
+  void DetectionIteration();
 
 
+  //entire plan, from SelectBlock() to Scheduling(), BuildMetaTables()
+  void Plan();
 
-    private:
-        void Setup();
-        //map<int,BlockMeta>table_meta;
-        static const int MAXN=2000000;
-        BlockMeta table_meta[MAXN];
-        vector<int> table_sched[6][MAXN];
-        //map<int,vector<int>>table_sched[4];
+  //block selection algo
+  vector<SwapBlock> SelectBlock(vector<SwapBlock>&vec_swap,vector<LL> temp_load,LL mem_limit);
 
-        map<Block*,int>removed;
-        map<int,int>findSmoothL;
-        map<int,int>findSmoothR;
-        map<Block*,int>blockVis;
+  //schedule algo
+  void StickToLimit(vector<SwapBlock>&vec_swap_selct, vector<LL>&vec_load_temp,LL &overhead,LL mem_limit,string mode);
 
-        bool overheadvis[MAXN];
-        //map<int,bool>overheadvis;
-        int rfornot=0;
-        int recomputetype=1;
-        //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
-        //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
-        //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
+  //make tables table_sched and table_meta
+  void BuildMetaTables(vector<SwapBlock>&vec_swap_selct);
 
-        //vec_block
-        vector<InfoBlock>vecBlock;
-        vector<SwapBlock>removeBlock;
-        vector<string>vec_block; //iterations for Detection, i.e. detect iterations.
-        vector<string>vec_block_fresh; //iterations that are used for Planning,
-        vector<string>vec_block_mf; //iterations used to construct pool
-        vector<LL>realload;
-        vector<LL>accload;
-        vector<LL>accSmoothLoad;
-        vector<LL>swapload;
-        vector<LL>origin_load; //3 iteration load, for planning.
-        vector<InfoBlock>vec_run;
-        vector<int>operation_sequence; //sequence of operations of one middle iteration
-        vector<size_t>size_sequence; //size of all operations of one middle iteration
-        vector<LL>poolvec;
+  //update table_meta, during Append()
+  void UpdateMetaTables(Block* block_ptr);
 
-        int async_swap_flag = 0; //0 for sync, 1 for async.
-        int past_test_flag = 0; //0 means need to test, 1 means no need test anymore.
-        int global_index = 0; //global counter, index, add 1 after each Malloc/Free/read/write.
-        int global_index_threshold = -1;
-        int iterlen = 0;
-        int iter2 = 0; //index of start of 2nd iteration
-        int fastinterval = 0; //index of start of 5th iteration
-        int fastiter = -1;
-        int number_of_swap_blocks=0;
-        int remove_limit=22;
-        int mode_type=0;
-        int ignorefactor=10;
-        int openremovedirect=0;
-        string outputfile="resnetswap";
-        double swap_factor=1.0;
-        int syncfactor=0;
-        LL deploytime=0;
-        int justrun=0;
-        int swapMemOp=1;
-        int stopswap;
-        int recompute=0;
-        int faketrain=0;
-        int beginremove=200;
-        int delayremove=200;
+  //swap/sync during Append()
+  void DeploySwap();
 
-        double swapoutcof=0.0756,swapoutbias=47200;
-        double swapincof=0.0823,swapinbias=9700;
+  //exec DelpoySwap
+  void DeploySwapOut(int relative_counter);
+  void DeploySwapIn(int relative_counter);
 
-        //design specs
-        double mem_limit_ratio = 0.70;
-        LL smallest_block = (1<<22); //1 MB
-        int data_buffer = 4; // used to control readyIdx
-        int mutable_data_buffer = 6;
-        LL max_load;
-        int max_idx;
-        LL total_swap_in_time = 0;
-        LL total_swap_out_time = 0;
-        LL temp_time = 0;
-        LL temp_time_baseline; //vec_run[0] time
+  //load profile as per synchronous swap.
+  vector<LL> GetIdealLoad(vector<LL>vec_load,vector<SwapBlock> vec_swap_selct);
+
+  //in case gpu ptr wrong, updated it after swap_in ad hoc
+  void* UpdateGpuPtr(const Block* block_ptr) override;
+
+  //Swap Synchronous, for early iterations
+  void SwapOutSynchronous(const Block* block_ptr);
+  void SwapInSynchronous(const Block* block_ptr);
+
+  //Swap asynchronous, for middle iteraions
+  void SwapOut(const int idx);
+  void SwapIn(const int idx);
+  void SwapOutSyn(const int idx);
+  void SwapInSyn(const int idx);
+  int shiftForConflict(int idx,int inc);
+
+  //LL update_accum(int i,LL accum,int neg);
+  //LL check_accum(int i,LL accum,int neg);
+  LL SwapOutTime(size_t size);
+  LL SwapInTime(size_t size);
 
 
-        map<int,bool>recomputeUsedBlocks;
-        vector<int>recomputeFileSelect;
-        //map<Block*,bool>useBlockAddress;
-        int maxRNum=0;
-        int setmaxRNum=0;
-        int setLastRNum=0;
-        int Refile=0;
-        int overlapcr = 0;
-        int lastrecompute=1;
-        int iterlen_threshold = 1000;
-        int DEBUG;
-        LL maxnoswapload=0;
-        LL maxswapload=0;
-        LL maxpoolsize=0;
-        LL globalmaxpoolsize=0;
 
-        int recomRELU=1,recomBN=2,recomReLUBN=3;
-        int recomCONV=4,recomPOOL=5,recomBNCONV=6;
-        int recomALL=7,recomPBNCONV=10;
+ private:
+  void Setup();
+  //map<int,BlockMeta>table_meta;
+  static const int MAXN=2000000;
+  BlockMeta table_meta[MAXN];
+  vector<int> table_sched[6][MAXN];
+  //map<int,vector<int>>table_sched[4];
 
-        friend class Block;
+  map<Block*,int>removed;
+  map<int,int>findSmoothL;
+  map<int,int>findSmoothR;
+  map<Block*,int>blockVis;
 
-    private:
-        shared_ptr<DeviceMemPool> pool_;
-    };
+  bool overheadvis[MAXN];
+  //map<int,bool>overheadvis;
+  int rfornot=0;
+  int recomputetype=1;
+  //map<const Block*,BlockMeta>table_block_meta; //for measure speed only.
+  //map<const Block*, int>table_not_at_device;  //int refers to its r_idx of the block/meta
+  //map<int,std::tuple<int,int,int,int>>table_sched; // changed to with sync_r_idx
+
+  //vec_block
+  vector<InfoBlock>vecBlock;
+  vector<SwapBlock>removeBlock;
+  vector<string>vec_block; //iterations for Detection, i.e. detect iterations.
+  vector<string>vec_block_fresh; //iterations that are used for Planning,
+  vector<string>vec_block_mf; //iterations used to construct pool
+  vector<LL>realload;
+  vector<LL>accload;
+  vector<LL>accSmoothLoad;
+  vector<LL>swapload;
+  vector<LL>origin_load; //3 iteration load, for planning.
+  vector<InfoBlock>vec_run;
+  vector<int>operation_sequence; //sequence of operations of one middle iteration
+  vector<size_t>size_sequence; //size of all operations of one middle iteration
+  vector<LL>poolvec;
+
+  int async_swap_flag = 0; //0 for sync, 1 for async.
+  int past_test_flag = 0; //0 means need to test, 1 means no need test anymore.
+  int global_index = 0; //global counter, index, add 1 after each Malloc/Free/read/write.
+  int global_index_threshold = -1;
+  int iterlen = 0;
+  int iter2 = 0; //index of start of 2nd iteration
+  int fastinterval = 0; //index of start of 5th iteration
+  int fastiter = -1;
+  int number_of_swap_blocks=0;
+  int remove_limit=22;
+  int mode_type=0;
+  int ignorefactor=10;
+  int openremovedirect=0;
+  string outputfile="resnetswap";
+  double swap_factor=1.0;
+  int syncfactor=0;
+  LL deploytime=0;
+  int justrun=1;
+  int swapMemOp=1;
+  int stopswap;
+  int recompute=0;
+  int faketrain=0;
+  int beginremove=200;
+  int delayremove=200;
+
+  double swapoutcof=0.0756,swapoutbias=47200;
+  double swapincof=0.0823,swapinbias=9700;
+  int measureSwapSpeedSize=1e9;
+
+  //design specs
+  double mem_limit_ratio = 0.70;
+  LL smallest_block = (1<<22); //1 MB
+  int data_buffer = 4; // used to control readyIdx
+  int mutable_data_buffer = 6;
+  LL max_load;
+  int max_idx;
+  LL total_swap_in_time = 0;
+  LL total_swap_out_time = 0;
+  LL temp_time = 0;
+  LL temp_time_baseline; //vec_run[0] time
+
+
+  map<int,bool>recomputeUsedBlocks;
+  vector<int>recomputeFileSelect;
+  //map<Block*,bool>useBlockAddress;
+  int maxRNum=0;
+  int setmaxRNum=0;
+  int setLastRNum=0;
+  int Refile=0;
+  int overlapcr = 0;
+  int lastrecompute=1;
+  int iterlen_threshold = 1000;
+  int DEBUG;
+  LL maxnoswapload=0;
+  LL maxswapload=0;
+  LL maxpoolsize=0;
+  LL globalmaxpoolsize=0;
+
+  int recomRELU=1,recomBN=2,recomReLUBN=3;
+  int recomCONV=4,recomPOOL=5,recomBNCONV=6;
+  int recomALL=7,recomPBNCONV=10;
+
+  friend class Block;
+
+ private:
+  shared_ptr<DeviceMemPool> pool_;
+};
 /// a singleton CppDevice as the host for all devices.
 extern std::shared_ptr<Device> defaultDevice;
 

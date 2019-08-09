@@ -25,6 +25,8 @@
 #include <iostream>
 #include "singa/core/device.h"
 #include "singa/utils/cuda_utils.h"
+#include <iostream>
+using namespace std;
 namespace singa {
 
 const cudaMemcpyKind copyKind[] = {cudaMemcpyHostToHost, cudaMemcpyHostToDevice,
@@ -95,12 +97,13 @@ void CudaGPU::CopyToFrom(void* dst, const void* src, size_t nBytes,
 
 size_t CudaGPU::GetAllocatedMem() {
   if (pool_ != nullptr) {
-    auto ret = pool_->GetMemUsage();
+    auto ret = pool_->GetMemUsage(id_);
     return ret.second - ret.first;
   }
   LOG(ERROR) << "The memory pool is not set";
   return 0u;
 }
+
 
 /// Allocate gpu memory.
 void* CudaGPU::Malloc(int size) {
