@@ -782,6 +782,28 @@ def cat(xs, axis=0):
     # xs is a tuple of multiple Tensors
     return Concat(axis)(*xs)[0]
 
+class ReduceSum(Operation):
+    def __init__(self,axis=-1):
+        super(ReduceSum, self).__init__()
+        if(type(axis) is int):
+            self.axis=[axis]
+        else:
+            self.axis=axis
+
+
+    def forward(self, x):
+        self.cache=x.shape()
+        print(tensor.from_raw_tensor(singa.Sum(x,0)))
+        return singa.Reshape(x, cur)
+
+    def backward(self, dy):
+        return singa.Reshape(dy, self.cache)
+
+
+def reduceSum(x,axis=-1):
+    return ReduceSum(axis)(x)[0]
+
+
 
 class _Conv2d(Operation):
     def __init__(self, handle):

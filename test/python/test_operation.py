@@ -953,7 +953,56 @@ class TestPythonOperation(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(tensor.to_numpy(result), XT, decimal=5)
         np.testing.assert_array_almost_equal(tensor.to_numpy(tensor.from_raw_tensor(dx)), DX, decimal=5)
-    
+
+    def test_reducesum_cpu(self):
+        x = np.array([0.1,-1.0,0.4,4.0,-0.9,9.0]).reshape(3,2).astype(np.float32)
+        y = x.reshape(3, 2)
+        dy = np.ones((3, 2), dtype = np.float32)
+        grad = dy.reshape(3,1,2,1)
+
+
+        x = tensor.from_numpy(x)
+        dy = tensor.from_numpy(dy)
+        x.to_device(cpu_dev)
+        dy.to_device(cpu_dev)
+
+        b = singa.Sum(x.data,0)
+        b=b.Repeat([3],0)
+
+        print(tensor.to_numpy(tensor.from_raw_tensor(b)))
+        print(tensor.to_numpy(tensor.from_raw_tensor(b)).shape)
+        b=singa.Reshape(b,(3,2))
+        c=singa.__mul__(x.data,b)
+        print(tensor.to_numpy(tensor.from_raw_tensor(c)))
+        print(tensor.to_numpy(tensor.from_raw_tensor(c)).shape)
+
+        # result = autograd.squeeze(x)
+        # dx = result.creator.backward(dy.data)
+        #
+        #
+        # np.testing.assert_array_almost_equal(tensor.to_numpy(result), y, decimal=5)
+        # np.testing.assert_array_almost_equal(tensor.to_numpy(tensor.from_raw_tensor(dx)), grad, decimal=5)
+
+    def test_reducesum_gpu(self):
+        x = np.array([0.1,-1.0,0.4,4.0,-0.9,9.0]).reshape(3,1,2,1,1).astype(np.float32)
+        y = x.reshape(3, 2,1)
+        dy = np.ones((3, 2,1), dtype = np.float32)
+        grad = dy.reshape(3,1,2,1,1)
+
+
+        x = tensor.from_numpy(x)
+        dy = tensor.from_numpy(dy)
+        x.to_device(cpu_dev)
+        dy.to_device(cpu_dev)
+
+        # result = autograd.squeeze(x,(1,3))
+        # dx = result.creator.backward(dy.data)
+        #
+        #
+        # np.testing.assert_array_almost_equal(tensor.to_numpy(result), y, decimal=5)
+        # np.testing.assert_array_almost_equal(tensor.to_numpy(tensor.from_raw_tensor(dx)), grad, decimal=5)
+
+
     def test_Sqrt_cpu(self):
         X = np.array([0.1,1.0,0.4,4.0,0.9,9.0]).reshape(3,2).astype(np.float32)
         XT = np.sqrt(X)
